@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 
@@ -27,6 +27,20 @@ const SELLER_NAV = [
 
 export default function Layout({ area }: { area: "admin" | "seller" }) {
   const { user, loading, logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [area]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   if (loading) return <FullPageSpinner />;
   if (!user) return <Navigate to="/login" replace />;
@@ -40,22 +54,50 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      {menuOpen && <button className="mobile-menu-backdrop" aria-label="بستن منو" onClick={() => setMenuOpen(false)} />}
+
+      <aside className={`sidebar${menuOpen ? " open" : ""}`}>
         <div className="brand">🧊 پنل {area === "admin" ? "مدیریت" : "فروشنده"}</div>
         <nav>
           {nav.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => (isActive ? "active" : "")}>
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              onClick={() => setMenuOpen(false)}
+              className={({ isActive }) => (isActive ? "active" : "")}
+            >
               <span aria-hidden>{item.icon}</span> {item.label}
             </NavLink>
           ))}
         </nav>
+
         <div className="user-box">
           <div>{user.email}</div>
-          <div style={{ opacity: .7, fontSize: ".76rem" }}>{roleLabel(user.role)}{user.seller ? ` — ${user.seller.storeName}` : ""}</div>
+          <div style={{ opacity: .7, fontSize: ".76rem", marginTop: 4 }}>
+            {roleLabel(user.role)}{user.seller ? ` — ${user.seller.storeName}` : ""}
+          </div>
           <button className="btn btn-outline btn-sm" onClick={logout}>خروج</button>
         </div>
       </aside>
+
       <div className="main-area">
+        <div className="topbar">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button
+              className="btn btn-outline mobile-menu-button"
+              style={{ display: "none" }}
+              onClick={() => setMenuOpen(true)}
+              aria-label="باز کردن منو"
+            >
+              ☰
+            </button>
+            <h1>{area === "admin" ? "داشبورد مدیریت" : "داشبورد فروشگاه"}</h1>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="badge badge-info">{roleLabel(user.role)}</span>
+          </div>
+        </div>
         <Outlet />
       </div>
     </div>
