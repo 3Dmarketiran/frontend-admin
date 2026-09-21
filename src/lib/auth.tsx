@@ -40,20 +40,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: SessionUser;
       sessionId?: string;
       expiresAt?: string;
-    }>("/api/auth/login", { email, password });
+    }>("/api/auth/login", {
+      email,
+      password,
+    });
 
+    // ذخیره سشن برای درخواست‌های بعدی
     if (response.sessionId) {
       setStoredSessionId(response.sessionId);
     }
 
-    await refresh();
+    // مهم:
+    // بعد از ورود، مستقیماً کاربر برگشتی از login را ثبت می‌کنیم.
+    // دیگر برای کامل شدن login منتظر /me نمی‌مانیم.
+    setUser(response.user);
+    setLoading(false);
   }
 
   async function logout() {
     try {
       await api.post("/api/auth/logout");
     } catch {
-      // Clear local state even if the server session is already gone.
+      // حتی اگر سشن سرور منقضی شده باشد،
+      // وضعیت محلی باید پاک شود.
     }
 
     clearStoredSessionId();
@@ -61,7 +70,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -69,7 +85,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+
+  if (!ctx) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+
   return ctx;
 }
 
