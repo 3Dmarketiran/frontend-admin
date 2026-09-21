@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { api, ApiError } from "./api";
+import {
+  api,
+  ApiError,
+  clearStoredSessionId,
+  setStoredSessionId,
+} from "./api";
 import type { SessionUser } from "../types";
 
 interface AuthState {
@@ -31,7 +36,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function login(email: string, password: string) {
-    await api.post("/api/auth/login", { email, password });
+    const response = await api.post<{
+      user: SessionUser;
+      sessionId?: string;
+      expiresAt?: string;
+    }>("/api/auth/login", { email, password });
+
+    if (response.sessionId) {
+      setStoredSessionId(response.sessionId);
+    }
+
     await refresh();
   }
 
@@ -39,12 +53,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await api.post("/api/auth/logout");
     } catch {
-      // ignore — clear local state regardless
+      // Clear local state even if the server session is already gone.
     }
+
+    clearStoredSessionId();
     setUser(null);
   }
 
-  return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
