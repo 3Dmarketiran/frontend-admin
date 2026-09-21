@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./lib/auth";
 import { ToastProvider } from "./lib/toast";
 import Layout from "./components/Layout";
@@ -26,7 +26,7 @@ import SellerProfile from "./pages/seller/Profile";
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <ToastProvider>
         <AuthProvider>
           <Routes>
@@ -61,6 +61,6 @@ export default function App() {
           </Routes>
         </AuthProvider>
       </ToastProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
