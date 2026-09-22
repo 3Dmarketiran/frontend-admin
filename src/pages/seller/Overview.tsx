@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
 import { StatCard, Spinner, fmtDate } from "../../components/ui";
+import { useToast } from "../../lib/toast";
 import type { Product } from "../../types";
 
 interface Overview {
@@ -38,7 +39,7 @@ interface Usage {
 
 function formatStorage(mb: number) {
   if (mb < 1) {
-    return `${Math.round(mb * 1024)} KB`;
+    return `${Math.max(1, Math.round(mb * 1024))} KB`;
   }
 
   if (mb < 1024) {
@@ -54,8 +55,39 @@ function getUsageClass(percent: number) {
   return "usage-normal";
 }
 
+function getProductStatus(
+  visibility: Product["visibility"]
+) {
+  switch (visibility) {
+    case "PUBLISHED":
+      return "منتشرشده";
+
+    case "HIDDEN":
+      return "مخفی";
+
+    default:
+      return "پیش‌نویس";
+  }
+}
+
+function getProductStatusClass(
+  visibility: Product["visibility"]
+) {
+  switch (visibility) {
+    case "PUBLISHED":
+      return "success";
+
+    case "HIDDEN":
+      return "warning";
+
+    default:
+      return "neutral";
+  }
+}
+
 export default function SellerOverview() {
   const { user } = useAuth();
+  const { push } = useToast();
 
   const sellerId = user!.seller!.id;
 
@@ -69,7 +101,44 @@ export default function SellerOverview() {
   const [loading, setLoading] =
     useState(true);
 
+  const [isMobile, setIsMobile] =
+    useState(() =>
+      typeof window !== "undefined"
+        ? window.matchMedia(
+            "(max-width: 760px)"
+          ).matches
+        : false
+    );
+
   useEffect(() => {
+    const media = window.matchMedia(
+      "(max-width: 760px)"
+    );
+
+    const handleChange = (
+      event: MediaQueryListEvent
+    ) => {
+      setIsMobile(event.matches);
+    };
+
+    setIsMobile(media.matches);
+
+    media.addEventListener(
+      "change",
+      handleChange
+    );
+
+    return () => {
+      media.removeEventListener(
+        "change",
+        handleChange
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+
     Promise.all([
       api.get<{ items: Product[] }>(
         `/api/products?sellerId=${sellerId}&pageSize=100`
@@ -83,10 +152,32 @@ export default function SellerOverview() {
         `/api/subscriptions/seller/${sellerId}/usage`
       ),
     ])
-      .then(([productsResponse, overviewResponse, usageResponse]) => {
-        setProducts(productsResponse.items);
-        setOverview(overviewResponse);
-        setUsage(usageResponse);
+      .then(
+        ([
+          productsResponse,
+          overviewResponse,
+          usageResponse,
+        ]) => {
+          setProducts(
+            productsResponse.items
+          );
+
+          setOverview(
+            overviewResponse
+          );
+
+          setUsage(
+            usageResponse
+          );
+        }
+      )
+      .catch((err) => {
+        push(
+          err instanceof ApiError
+            ? err.message
+            : "خطا در دریافت اطلاعات داشبورد.",
+          "error"
+        );
       })
       .finally(() => {
         setLoading(false);
@@ -101,14 +192,26 @@ export default function SellerOverview() {
     (p) => p.visibility === "DRAFT"
   ).length;
 
+  const hidden = products.filter(
+    (p) => p.visibility === "HIDDEN"
+  ).length;
+
+  const unpublishedChanges =
+    products.filter(
+      (p) => p.hasUnpublishedChanges
+    ).length;
+
   const views =
     overview?.eventCounts.find(
-      (e) => e.type === "PRODUCT_DETAIL_VIEW"
+      (e) =>
+        e.type ===
+        "PRODUCT_DETAIL_VIEW"
     )?._count ?? 0;
 
   const arLaunches =
     overview?.eventCounts.find(
-      (e) => e.type === "AR_LAUNCH"
+      (e) =>
+        e.type === "AR_LAUNCH"
     )?._count ?? 0;
 
   const storagePercent =
@@ -136,6 +239,35 @@ export default function SellerOverview() {
   const usageClass =
     getUsageClass(storagePercent);
 
+  const productLimitReached =
+    usage?.productLimit !== null &&
+    usage?.productLimit !== undefined &&
+    usage.productCount >=
+      usage.productLimit;
+
+  const hasSubscription =
+    Boolean(usage?.subscription);
+
+  const storageNearlyFull =
+    storagePercent >= 80;
+
+  const canAddProduct =
+    hasSubscription &&
+    !productLimitReached;
+
+  const recentProducts =
+    [...products]
+      .sort(
+        (a, b) =>
+          new Date(
+            b.createdAt
+          ).getTime() -
+          new Date(
+            a.createdAt
+          ).getTime()
+      )
+      .slice(0, 5);
+
   return (
     <>
       <PageHeader title="نمای کلی فروشگاه" />
@@ -145,24 +277,114 @@ export default function SellerOverview() {
           <Spinner />
         ) : (
           <>
+            {/* Welcome / Hero */}
+            <div
+              className="card"
+              style={{
+                marginBottom: 16,
+                padding: isMobile
+                  ? 18
+                  : 24,
+                background:
+                  "linear-gradient(135deg, rgba(99,91,255,.12), rgba(139,92,246,.08))",
+                border:
+                  "1px solid rgba(99,91,255,.14)",
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color:
+                      "#635bff",
+                    marginBottom: 7,
+                  }}
+                >
+                  پنل فروشنده
+                </div>
+
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: isMobile
+                      ? 20
+                      : 25,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  سلام{" "}
+                  {user?.seller?.name ||
+                    "فروشنده"} 👋
+                </h2>
+
+                <p
+                  style={{
+                    margin:
+                      "7px 0 0",
+                    color:
+                      "var(--muted, #64748b)",
+                    fontSize: 13,
+                    lineHeight: 1.8,
+                  }}
+                >
+                  وضعیت فروشگاه، محصولات،
+                  فضای ذخیره‌سازی و عملکرد
+                  واقعیت افزوده را از اینجا
+                  مدیریت کنید.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  position:
+                    "absolute",
+                  width: 180,
+                  height: 180,
+                  borderRadius:
+                    "50%",
+                  background:
+                    "rgba(99,91,255,.08)",
+                  left: -70,
+                  bottom: -110,
+                }}
+              />
+            </div>
+
+            {/* Subscription Alert */}
             {!usage?.subscription && (
               <div
                 className="alert alert-error"
-                style={{ marginBottom: 16 }}
+                style={{
+                  marginBottom: 16,
+                }}
               >
-                اشتراک شما فعال نیست. برای انتشار محصول و
-                آپلود فایل جدید، اشتراک فعال لازم است.
+                اشتراک شما فعال نیست. برای
+                انتشار محصول و آپلود فایل جدید،
+                اشتراک فعال لازم است.
               </div>
             )}
 
-            {/* Main stats */}
+            {/* Main Stats */}
             <div
               className="grid grid-4"
-              style={{ marginBottom: 16 }}
+              style={{
+                marginBottom: 16,
+              }}
             >
               <StatCard
                 label="کل محصولات"
-                value={products.length}
+                value={
+                  usage?.productCount ??
+                  products.length
+                }
                 sub={
                   usage?.productLimit
                     ? `از ${usage.productLimit} محصول`
@@ -173,6 +395,15 @@ export default function SellerOverview() {
               <StatCard
                 label="منتشرشده"
                 value={published}
+                sub={
+                  products.length
+                    ? `${Math.round(
+                        (published /
+                          products.length) *
+                          100
+                      )}٪ از محصولات`
+                    : undefined
+                }
               />
 
               <StatCard
@@ -190,20 +421,23 @@ export default function SellerOverview() {
                 sub={
                   usage?.subscription
                     ? `تا ${fmtDate(
-                        usage.subscription.endDate
+                        usage.subscription
+                          .endDate
                       )}`
                     : undefined
                 }
               />
             </div>
 
-            {/* Plan usage */}
+            {/* Usage */}
             {usage?.subscription && (
               <div
                 className="grid grid-2"
-                style={{ marginBottom: 16 }}
+                style={{
+                  marginBottom: 16,
+                }}
               >
-                {/* Products */}
+                {/* Product Usage */}
                 <div className="card usage-card">
                   <div className="usage-card-header">
                     <div>
@@ -212,16 +446,22 @@ export default function SellerOverview() {
                       </div>
 
                       <div className="usage-subtitle">
-                        پلن {usage.subscription.plan.name}
+                        پلن{" "}
+                        {
+                          usage.subscription
+                            .plan.name
+                        }
                       </div>
                     </div>
 
                     <div className="usage-number">
                       {usage.productCount}
+
                       <span>
                         {" "}
                         /{" "}
-                        {usage.productLimit ?? "∞"}
+                        {usage.productLimit ??
+                          "∞"}
                       </span>
                     </div>
                   </div>
@@ -233,14 +473,23 @@ export default function SellerOverview() {
                           className="usage-progress-bar"
                           style={{
                             width: `${productPercent}%`,
+                            background:
+                              productLimitReached
+                                ? "#ef4444"
+                                : productPercent >=
+                                  80
+                                ? "#f59e0b"
+                                : undefined,
                           }}
                         />
                       </div>
 
                       <div className="usage-footer">
                         <span>
-                          {Math.round(productPercent)}٪
-                          مصرف شده
+                          {Math.round(
+                            productPercent
+                          )}
+                          ٪ مصرف شده
                         </span>
 
                         <span>
@@ -252,15 +501,23 @@ export default function SellerOverview() {
                           جای خالی
                         </span>
                       </div>
+
+                      {productLimitReached && (
+                        <div className="usage-alert danger">
+                          ظرفیت محصولات این
+                          پلن تکمیل شده است.
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div className="usage-unlimited">
-                      بدون محدودیت تعداد محصول
+                      بدون محدودیت تعداد
+                      محصول
                     </div>
                   )}
                 </div>
 
-                {/* Storage */}
+                {/* Storage Usage */}
                 <div className="card usage-card">
                   <div className="usage-card-header">
                     <div>
@@ -269,7 +526,8 @@ export default function SellerOverview() {
                       </div>
 
                       <div className="usage-subtitle">
-                        تصاویر + فایل‌های 3D/AR
+                        تصاویر + فایل‌های
+                        3D/AR
                       </div>
                     </div>
 
@@ -323,23 +581,26 @@ export default function SellerOverview() {
                         </span>
                       </div>
 
-                      {storagePercent >= 80 && (
+                      {storageNearlyFull && (
                         <div
                           className={
-                            storagePercent >= 90
+                            storagePercent >=
+                            90
                               ? "usage-alert danger"
                               : "usage-alert"
                           }
                         >
-                          {storagePercent >= 90
-                            ? "فضای ذخیره‌سازی تقریباً پر است. برای آپلود فایل‌های بیشتر، پلن خود را افزایش دهید."
+                          {storagePercent >=
+                          90
+                            ? "فضای ذخیره‌سازی تقریباً پر است."
                             : "بیش از ۸۰٪ فضای ذخیره‌سازی مصرف شده است."}
                         </div>
                       )}
                     </>
                   ) : (
                     <div className="usage-unlimited">
-                      فضای ذخیره‌سازی بدون محدودیت
+                      فضای ذخیره‌سازی بدون
+                      محدودیت
                     </div>
                   )}
                 </div>
@@ -349,46 +610,328 @@ export default function SellerOverview() {
             {/* Analytics */}
             <div
               className="grid grid-3"
-              style={{ marginBottom: 16 }}
+              style={{
+                marginBottom: 16,
+              }}
             >
               <StatCard
                 label="بازدید محصولات"
                 value={views}
+                sub="مشاهده صفحه محصول"
               />
 
               <StatCard
                 label="اجرای واقعیت افزوده"
                 value={arLaunches}
+                sub="شروع تجربه AR"
               />
 
               <div
                 className="card"
                 style={{
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  flexDirection:
+                    "column",
+                  alignItems:
+                    "flex-start",
+                  justifyContent:
+                    "center",
+                  gap: 8,
+                  padding: 20,
                 }}
               >
-                <Link
-                  to="/seller/products/new"
-                  className="btn btn-primary"
+                <div
+                  style={{
+                    fontSize: 13,
+                    color:
+                      "var(--muted, #64748b)",
+                  }}
                 >
-                  + افزودن محصول جدید
-                </Link>
+                  اقدام سریع
+                </div>
+
+                {canAddProduct ? (
+                  <Link
+                    to="/seller/products/new"
+                    className="btn btn-primary"
+                  >
+                    + افزودن محصول جدید
+                  </Link>
+                ) : (
+                  <button
+                    className="btn btn-primary"
+                    disabled
+                  >
+                    + افزودن محصول جدید
+                  </button>
+                )}
+
+                {!hasSubscription && (
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "#dc2626",
+                    }}
+                  >
+                    اشتراک فعال لازم است.
+                  </div>
+                )}
+
+                {productLimitReached && (
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "#dc2626",
+                    }}
+                  >
+                    ظرفیت محصولات تکمیل
+                    شده است.
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Subscription info */}
+            {/* Recent Products */}
+            <div
+              className="card"
+              style={{
+                marginBottom: 16,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                className="section-header"
+                style={{
+                  paddingBottom: 14,
+                  borderBottom:
+                    "1px solid rgba(148,163,184,.14)",
+                }}
+              >
+                <div>
+                  <h3>
+                    آخرین محصولات
+                  </h3>
+
+                  <p className="muted">
+                    آخرین محصولاتی که به
+                    فروشگاه اضافه شده‌اند
+                  </p>
+                </div>
+
+                <Link
+                  to="/seller/products"
+                  className="btn btn-outline btn-sm"
+                >
+                  مشاهده همه
+                </Link>
+              </div>
+
+              {recentProducts.length === 0 ? (
+                <div
+                  style={{
+                    padding:
+                      "28px 10px",
+                    textAlign: "center",
+                    color:
+                      "var(--muted, #64748b)",
+                    fontSize: 13,
+                  }}
+                >
+                  هنوز محصولی اضافه
+                  نکرده‌اید.
+                </div>
+              ) : isMobile ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 10,
+                    paddingTop: 14,
+                  }}
+                >
+                  {recentProducts.map(
+                    (product) => (
+                      <div
+                        key={product.id}
+                        style={{
+                          padding: 13,
+                          borderRadius: 12,
+                          background:
+                            "rgba(148,163,184,.06)",
+                          border:
+                            "1px solid rgba(148,163,184,.12)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display:
+                              "flex",
+                            justifyContent:
+                              "space-between",
+                            gap: 10,
+                            alignItems:
+                              "flex-start",
+                          }}
+                        >
+                          <div
+                            style={{
+                              minWidth: 0,
+                              flex: 1,
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontWeight: 700,
+                                fontSize: 13,
+                                wordBreak:
+                                  "break-word",
+                              }}
+                            >
+                              {
+                                product.name
+                              }
+                            </div>
+
+                            <div
+                              style={{
+                                marginTop: 4,
+                                fontSize: 11,
+                                color:
+                                  "var(--muted, #64748b)",
+                              }}
+                            >
+                              {fmtDate(
+                                product.createdAt
+                              )}
+                            </div>
+                          </div>
+
+                          <span
+                            className={`badge badge-${getProductStatusClass(
+                              product.visibility
+                            )}`}
+                          >
+                            {getProductStatus(
+                              product.visibility
+                            )}
+                          </span>
+                        </div>
+
+                        {product.hasUnpublishedChanges && (
+                          <div
+                            style={{
+                              marginTop: 9,
+                            }}
+                          >
+                            <span className="badge badge-warning">
+                              تغییرات
+                              منتشرنشده
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <div
+                  className="table-wrap"
+                  style={{
+                    marginTop: 14,
+                  }}
+                >
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>
+                          محصول
+                        </th>
+                        <th>
+                          وضعیت
+                        </th>
+                        <th>
+                          تاریخ
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {recentProducts.map(
+                        (product) => (
+                          <tr
+                            key={
+                              product.id
+                            }
+                          >
+                            <td>
+                              <div
+                                style={{
+                                  display:
+                                    "flex",
+                                  alignItems:
+                                    "center",
+                                  gap: 7,
+                                  flexWrap:
+                                    "wrap",
+                                }}
+                              >
+                                <span>
+                                  {
+                                    product.name
+                                  }
+                                </span>
+
+                                {product.hasUnpublishedChanges && (
+                                  <span className="badge badge-warning">
+                                    تغییرات
+                                    منتشرنشده
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td>
+                              <span
+                                className={`badge badge-${getProductStatusClass(
+                                  product.visibility
+                                )}`}
+                              >
+                                {getProductStatus(
+                                  product.visibility
+                                )}
+                              </span>
+                            </td>
+
+                            <td>
+                              {fmtDate(
+                                product.createdAt
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Subscription */}
             {usage?.subscription && (
               <div
                 className="card"
-                style={{ marginBottom: 16 }}
+                style={{
+                  marginBottom: 16,
+                }}
               >
                 <div className="section-header">
                   <div>
-                    <h3>اشتراک فعلی</h3>
+                    <h3>
+                      اشتراک فعلی
+                    </h3>
+
                     <p className="muted">
-                      جزئیات پلن فعال فروشگاه
+                      جزئیات پلن فعال
+                      فروشگاه
                     </p>
                   </div>
 
@@ -402,7 +945,9 @@ export default function SellerOverview() {
 
                 <div
                   className="grid grid-3"
-                  style={{ marginTop: 16 }}
+                  style={{
+                    marginTop: 16,
+                  }}
                 >
                   <div>
                     <div className="muted">
@@ -410,7 +955,10 @@ export default function SellerOverview() {
                     </div>
 
                     <strong>
-                      {usage.subscription.plan.name}
+                      {
+                        usage.subscription
+                          .plan.name
+                      }
                     </strong>
                   </div>
 
@@ -421,7 +969,8 @@ export default function SellerOverview() {
 
                     <strong>
                       {fmtDate(
-                        usage.subscription.startDate
+                        usage.subscription
+                          .startDate
                       )}
                     </strong>
                   </div>
@@ -433,13 +982,114 @@ export default function SellerOverview() {
 
                     <strong>
                       {fmtDate(
-                        usage.subscription.endDate
+                        usage.subscription
+                          .endDate
                       )}
                     </strong>
                   </div>
                 </div>
               </div>
             )}
+
+            {/* Quick Summary */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  isMobile
+                    ? "1fr 1fr"
+                    : "repeat(3, 1fr)",
+                gap: 12,
+                marginBottom: 16,
+              }}
+            >
+              <div
+                className="card"
+                style={{
+                  padding: 15,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    color:
+                      "var(--muted, #64748b)",
+                    marginBottom: 5,
+                  }}
+                >
+                  منتشرشده
+                </div>
+
+                <strong
+                  style={{
+                    fontSize: 21,
+                  }}
+                >
+                  {published}
+                </strong>
+              </div>
+
+              <div
+                className="card"
+                style={{
+                  padding: 15,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    color:
+                      "var(--muted, #64748b)",
+                    marginBottom: 5,
+                  }}
+                >
+                  مخفی
+                </div>
+
+                <strong
+                  style={{
+                    fontSize: 21,
+                  }}
+                >
+                  {hidden}
+                </strong>
+              </div>
+
+              <div
+                className="card"
+                style={{
+                  padding: 15,
+                  gridColumn:
+                    isMobile
+                      ? "1 / -1"
+                      : undefined,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    color:
+                      "var(--muted, #64748b)",
+                    marginBottom: 5,
+                  }}
+                >
+                  تغییرات منتشرنشده
+                </div>
+
+                <strong
+                  style={{
+                    fontSize: 21,
+                    color:
+                      unpublishedChanges >
+                      0
+                        ? "#d97706"
+                        : undefined,
+                  }}
+                >
+                  {unpublishedChanges}
+                </strong>
+              </div>
+            </div>
           </>
         )}
       </div>
