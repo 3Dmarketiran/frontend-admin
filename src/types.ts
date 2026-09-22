@@ -1,22 +1,37 @@
 export type Role = "SUPER_ADMIN" | "ADMIN" | "SELLER";
 export type Visibility = "DRAFT" | "PUBLISHED" | "HIDDEN";
-export type SubStatus = "ACTIVE" | "EXPIRED" | "PENDING" | "CANCELLED";
-export type JobStatus = "QUEUED" | "PROCESSING" | "SUCCESS" | "FAILED";
+export type SubStatus =
+  | "ACTIVE"
+  | "EXPIRED"
+  | "PENDING"
+  | "CANCELLED";
+export type JobStatus =
+  | "QUEUED"
+  | "PROCESSING"
+  | "SUCCESS"
+  | "FAILED";
 export type DimensionUnit = "MM" | "CM" | "M";
 
 export interface SessionUser {
   id: string;
   email: string;
   role: Role;
-  seller: { id: string; slug: string; storeName: string } | null;
+  seller: {
+    id: string;
+    slug: string;
+    storeName: string;
+  } | null;
 }
 
 export interface Category {
   id: string;
   slug: string;
   name: string;
+  isActive: boolean;
   parentId: string | null;
-  _count?: { products: number };
+  _count?: {
+    products: number;
+  };
 }
 
 export interface ProductImage {
@@ -42,7 +57,11 @@ export interface Product {
   tags: string | null;
   categoryId: string | null;
   category?: Category | null;
-  seller?: { id: string; slug: string; storeName: string };
+  seller?: {
+    id: string;
+    slug: string;
+    storeName: string;
+  };
   sellerId: string;
   widthMm: number | null;
   heightMm: number | null;
@@ -66,8 +85,14 @@ export interface Seller {
   contactPhone: string | null;
   socialLinks: Record<string, string> | null;
   isActive: boolean;
-  user?: { email: string; isActive: boolean; createdAt: string };
-  _count?: { products: number };
+  user?: {
+    email: string;
+    isActive: boolean;
+    createdAt: string;
+  };
+  _count?: {
+    products: number;
+  };
   subscriptions?: Subscription[];
 }
 
@@ -98,15 +123,25 @@ export interface PublishJob {
   id: string;
   sellerId: string;
   productId: string | null;
-  product?: { name: string; slug: string } | null;
-  seller?: { storeName: string };
+  product?: {
+    name: string;
+    slug: string;
+  } | null;
+  seller?: {
+    storeName: string;
+  };
   status: JobStatus;
   commitSha: string | null;
   errorMessage: string | null;
   requestedAt: string;
   startedAt: string | null;
   finishedAt: string | null;
-  logs?: { id: string; message: string; level: string; createdAt: string }[];
+  logs?: {
+    id: string;
+    message: string;
+    level: string;
+    createdAt: string;
+  }[];
 }
 
 export interface PlatformSettings {
@@ -132,7 +167,10 @@ export interface AuditLogEntry {
   action: string;
   entity: string;
   entityId: string | null;
-  actor?: { email: string; role: Role } | null;
+  actor?: {
+    email: string;
+    role: Role;
+  } | null;
   metadata?: Record<string, unknown> | null;
   createdAt: string;
 }
@@ -141,8 +179,18 @@ export interface HealthReport {
   status: "ok" | "degraded";
   uptimeMs: number;
   services: {
-    database: { status: string; latencyMs: number | null };
-    storage: { provider: string; status: string };
-    github: { configured: boolean; status: string; message?: string };
+    database: {
+      status: string;
+      latencyMs: number | null;
+    };
+    storage: {
+      provider: string;
+      status: string;
+    };
+    github: {
+      configured: boolean;
+      status: string;
+      message?: string;
+    };
   };
 }
