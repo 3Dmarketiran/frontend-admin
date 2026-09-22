@@ -6,6 +6,7 @@ const ADMIN_NAV = [
   { to: "/admin", label: "نمای کلی", end: true, icon: "📊" },
   { to: "/admin/sellers", label: "فروشندگان", icon: "🏬" },
   { to: "/admin/products", label: "محصولات", icon: "📦" },
+  { to: "/admin/categories", label: "دسته‌بندی‌ها", icon: "📂" },
   { to: "/admin/subscriptions", label: "اشتراک‌ها", icon: "💳" },
   { to: "/admin/plans", label: "پلن‌های اشتراک", icon: "🗂️" },
   { to: "/admin/publishing", label: "انتشار", icon: "🚀" },
@@ -25,7 +26,11 @@ const SELLER_NAV = [
   { to: "/seller/profile", label: "پروفایل فروشگاه", icon: "🏪" },
 ];
 
-export default function Layout({ area }: { area: "admin" | "seller" }) {
+export default function Layout({
+  area,
+}: {
+  area: "admin" | "seller";
+}) {
   const { user, loading, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -35,69 +40,155 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
 
   useEffect(() => {
     if (!menuOpen) return;
+
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
     };
+
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+
+    return () => {
+      document.removeEventListener("keydown", onKey);
+    };
   }, [menuOpen]);
 
   if (loading) return <FullPageSpinner />;
-  if (!user) return <Navigate to="/login" replace />;
 
-  const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
-  if (area === "admin" && !isAdmin) return <Navigate to="/seller" replace />;
-  if (area === "seller" && isAdmin) return <Navigate to="/admin" replace />;
-  if (area === "seller" && !user.seller) return <Navigate to="/login" replace />;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
-  const nav = area === "admin" ? ADMIN_NAV : SELLER_NAV;
+  const isAdmin =
+    user.role === "ADMIN" ||
+    user.role === "SUPER_ADMIN";
+
+  if (area === "admin" && !isAdmin) {
+    return <Navigate to="/seller" replace />;
+  }
+
+  if (area === "seller" && isAdmin) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  if (area === "seller" && !user.seller) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const nav =
+    area === "admin"
+      ? ADMIN_NAV
+      : SELLER_NAV;
 
   return (
     <div className="app-shell">
-      {menuOpen && <button className="mobile-menu-backdrop" aria-label="بستن منو" onClick={() => setMenuOpen(false)} />}
+      {menuOpen && (
+        <button
+          className="mobile-menu-backdrop"
+          aria-label="بستن منو"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
 
-      <aside className={`sidebar${menuOpen ? " open" : ""}`}>
-        <div className="brand">🧊 پنل {area === "admin" ? "مدیریت" : "فروشنده"}</div>
+      <aside
+        className={`sidebar${
+          menuOpen ? " open" : ""
+        }`}
+      >
+        <div className="brand">
+          🧊 پنل{" "}
+          {area === "admin"
+            ? "مدیریت"
+            : "فروشنده"}
+        </div>
+
         <nav>
           {nav.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
-              onClick={() => setMenuOpen(false)}
-              className={({ isActive }) => (isActive ? "active" : "")}
+              onClick={() =>
+                setMenuOpen(false)
+              }
+              className={({ isActive }) =>
+                isActive ? "active" : ""
+              }
             >
-              <span aria-hidden>{item.icon}</span> {item.label}
+              <span aria-hidden>
+                {item.icon}
+              </span>{" "}
+              {item.label}
             </NavLink>
           ))}
         </nav>
 
         <div className="user-box">
           <div>{user.email}</div>
-          <div style={{ opacity: .7, fontSize: ".76rem", marginTop: 4 }}>
-            {roleLabel(user.role)}{user.seller ? ` — ${user.seller.storeName}` : ""}
+
+          <div
+            style={{
+              opacity: 0.7,
+              fontSize: ".76rem",
+              marginTop: 4,
+            }}
+          >
+            {roleLabel(user.role)}
+            {user.seller
+              ? ` — ${user.seller.storeName}`
+              : ""}
           </div>
-          <button className="btn btn-outline btn-sm" onClick={logout}>خروج</button>
+
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={logout}
+          >
+            خروج
+          </button>
         </div>
       </aside>
 
       <div className="main-area">
         <div className="topbar">
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
             <button
               className="btn btn-outline mobile-menu-button"
               style={{ display: "none" }}
-              onClick={() => setMenuOpen(true)}
+              onClick={() =>
+                setMenuOpen(true)
+              }
               aria-label="باز کردن منو"
             >
               ☰
             </button>
-            <h1>{area === "admin" ? "داشبورد مدیریت" : "داشبورد فروشگاه"}</h1>
+
+            <h1>
+              {area === "admin"
+                ? "داشبورد مدیریت"
+                : "داشبورد فروشگاه"}
+            </h1>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span className="badge badge-info">{roleLabel(user.role)}</span>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span className="badge badge-info">
+              {roleLabel(user.role)}
+            </span>
           </div>
         </div>
+
         <Outlet />
       </div>
     </div>
@@ -105,20 +196,38 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
 }
 
 function roleLabel(role: string) {
-  if (role === "SUPER_ADMIN") return "مدیر ارشد";
-  if (role === "ADMIN") return "مدیر";
+  if (role === "SUPER_ADMIN") {
+    return "مدیر ارشد";
+  }
+
+  if (role === "ADMIN") {
+    return "مدیر";
+  }
+
   return "فروشنده";
 }
 
 export function FullPageSpinner() {
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-muted)" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "var(--color-text-muted)",
+      }}
+    >
       در حال بارگذاری...
     </div>
   );
 }
 
-export function PageHeader({ title }: { title: string }) {
+export function PageHeader({
+  title,
+}: {
+  title: string;
+}) {
   return (
     <div className="topbar">
       <h1>{title}</h1>
