@@ -173,3 +173,63 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:.84rem}th,t
     font-size: 17px;
   }
 }
+/* ================================
+   Button spacing polish
+   ================================ */
+
+.btn + .btn,
+a.btn + .btn,
+.btn + a.btn,
+a.btn + a.btn {
+  margin-inline-start: 8px;
+}
+
+.section-head > div,
+.topbar > div,
+.modal-header > div,
+.modal-actions,
+.form-actions,
+.page-actions,
+.card-actions,
+.actions,
+.button-row,
+.btn-row {
+  gap: 8px;
+}
+
+.modal-actions,
+.form-actions,
+.page-actions,
+.card-actions,
+.actions,
+.button-row,
+.btn-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn-block {
+  margin-inline: 0 !important;
+}
+
+@media (max-width: 520px) {
+  .btn + .btn,
+  a.btn + .btn,
+  .btn + a.btn,
+  a.btn + a.btn {
+    margin-inline-start: 6px;
+  }
+
+  .section-head > div,
+  .topbar > div,
+  .modal-actions,
+  .form-actions,
+  .page-actions,
+  .card-actions,
+  .actions,
+  .button-row,
+  .btn-row {
+    gap: 6px;
+  }
+}
