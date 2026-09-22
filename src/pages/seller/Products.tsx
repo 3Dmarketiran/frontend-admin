@@ -1,16 +1,15 @@
-import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
-import { PageHeader } from "../../components/Layout";
+import PageHeader from "../../components/PageHeader";
+import PublishJobStatus from "../../components/PublishJobStatus";
 import {
   EmptyState,
   Spinner,
   VisibilityBadge,
-  JobStatusBadge,
   fmtDate,
-} from "../../components/ui";
-import { useToast } from "../../lib/toast";
+} from "../../components/UI";
+import { toast } from "../../components/Toast";
 import type { Product, PublishJob } from "../../types";
 
 type UsageData = {
@@ -27,1429 +26,849 @@ type UsageData = {
     plan: {
       id: string;
       name: string;
+      durationDays: number;
+      price: number;
+      discountPct: number;
+      features: unknown;
       productLimit: number | null;
       storageLimitMb: number | null;
     };
   } | null;
 };
 
-function formatStorage(mb: number): string {
-  if (mb < 1024) {
-    return `${Math.round(mb)} MB`;
-  }
+type Filter = "ALL" | "DRAFT" | "PUBLISHED" | "HIDDEN";
 
-  return `${(mb / 1024).toFixed(2)} GB`;
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("fa-IR").format(value);
 }
 
-function getStoragePercent(
-  usedMb: number,
-  limitMb: number | null
-): number {
-  if (!limitMb || limitMb <= 0) return 0;
+function getDaysRemaining(endDate?: string | null) {
+  if (!endDate) return null;
 
-  return Math.min(
-    100,
-    Math.round((usedMb / limitMb) * 100)
+  const timestamp = new Date(endDate).getTime();
+
+  if (Number.isNaN(timestamp)) return null;
+
+  return Math.ceil(
+    (timestamp - Date.now()) / (1000 * 60 * 60 * 24),
   );
 }
 
-function getStorageStatus(percent: number) {
-  if (percent >= 90) {
-    return {
-      label: "تقریباً پر",
-      className: "danger",
-    };
-  }
+function getUsagePercent(
+  value: number,
+  limit: number | null,
+) {
+  if (limit === null || limit <= 0) return 0;
 
-  if (percent >= 80) {
-    return {
-      label: "مصرف بالا",
-      className: "warning",
-    };
-  }
-
-  return {
-    label: "مناسب",
-    className: "success",
-  };
+  return Math.min(100, Math.max(0, (value / limit) * 100));
 }
 
-function isActiveJobStatus(status?: string | null) {
-  return (
-    status === "QUEUED" ||
-    status === "PROCESSING"
-  );
+function getProgressClass(percent: number) {
+  if (percent >= 90) return "bg-red-500";
+  if (percent >= 75) return "bg-amber-500";
+  return "bg-emerald-500";
 }
 
-function getLatestJobForProduct(
+function getJobForProduct(
   jobs: PublishJob[],
-  productId: string
+  productId: string,
 ) {
   return jobs.find(
     (job) =>
-      job.productId === productId
+      job.productId === productId &&
+      (job.status === "QUEUED" ||
+        job.status === "PROCESSING"),
   );
 }
 
-function PublishJobState({
-  job,
-}: {
-  job?: PublishJob;
-}) {
-  if (!job) {
-    return null;
-  }
-
-  if (job.status === "SUCCESS") {
-    return (
-      <div
-        style={{
-          marginTop: 10,
-          padding: "8px 10px",
-          borderRadius: 10,
-          background: "rgba(34,197,94,.08)",
-          border: "1px solid rgba(34,197,94,.18)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-            flexWrap: "wrap",
-          }}
-        >
-          <JobStatusBadge v={job.status} />
-
-          <span
-            style={{
-              fontSize: 12,
-              color: "var(--muted, #64748b)",
-            }}
-          >
-            انتشار با موفقیت انجام شد.
-          </span>
-        </div>
-
-        {job.commitSha && (
-          <div
-            style={{
-              marginTop: 5,
-              fontSize: 11,
-              color: "var(--muted, #64748b)",
-            }}
-          >
-            Commit:{" "}
-            <code>
-              {job.commitSha.slice(0, 8)}
-            </code>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (job.status === "FAILED") {
-    return (
-      <div
-        style={{
-          marginTop: 10,
-          padding: "8px 10px",
-          borderRadius: 10,
-          background: "rgba(239,68,68,.08)",
-          border: "1px solid rgba(239,68,68,.18)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-            flexWrap: "wrap",
-          }}
-        >
-          <JobStatusBadge v={job.status} />
-
-          <span
-            style={{
-              fontSize: 12,
-              color: "#b91c1c",
-            }}
-          >
-            انتشار ناموفق بود.
-          </span>
-        </div>
-
-        {job.errorMessage && (
-          <div
-            style={{
-              marginTop: 6,
-              fontSize: 12,
-              lineHeight: 1.7,
-              color: "#991b1b",
-              wordBreak: "break-word",
-            }}
-          >
-            {job.errorMessage}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      style={{
-        marginTop: 10,
-        padding: "8px 10px",
-        borderRadius: 10,
-        background: "rgba(59,130,246,.07)",
-        border: "1px solid rgba(59,130,246,.15)",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-          flexWrap: "wrap",
-        }}
-      >
-        <JobStatusBadge v={job.status} />
-
-        <span
-          style={{
-            fontSize: 12,
-            color: "var(--muted, #64748b)",
-          }}
-        >
-          {job.status === "QUEUED"
-            ? "در صف انتشار قرار دارد."
-            : "در حال پردازش و ساخت نسخه عمومی است."}
-        </span>
-      </div>
-    </div>
+function getJobStatus(
+  jobs: PublishJob[],
+  productId: string,
+) {
+  return jobs.find(
+    (job) =>
+      job.productId === productId &&
+      (job.status === "SUCCESS" ||
+        job.status === "FAILED"),
   );
 }
 
-export default function SellerProducts() {
+function getSubscriptionMessage(
+  usage: UsageData | null,
+) {
+  if (!usage?.subscription) {
+    return {
+      type: "error" as const,
+      text: "اشتراک فعالی برای این فروشگاه وجود ندارد.",
+    };
+  }
+
+  const days = getDaysRemaining(usage.subscription.endDate);
+
+  if (days !== null && days < 0) {
+    return {
+      type: "error" as const,
+      text: "اشتراک فروشگاه منقضی شده است.",
+    };
+  }
+
+  if (days !== null && days <= 3) {
+    return {
+      type: "warning" as const,
+      text: `اشتراک فروشگاه ${formatNumber(Math.max(days, 0))} روز دیگر منقضی می‌شود.`,
+    };
+  }
+
+  if (days !== null && days <= 7) {
+    return {
+      type: "warning" as const,
+      text: `کمتر از یک هفته تا پایان اشتراک باقی مانده است.`,
+    };
+  }
+
+  return null;
+}
+
+export default function Products() {
   const { user } = useAuth();
-  const { push } = useToast();
-  const navigate = useNavigate();
 
-  const sellerId = user!.seller!.id;
+  const sellerId = user?.seller?.id;
 
   const [products, setProducts] = useState<Product[]>([]);
   const [jobs, setJobs] = useState<PublishJob[]>([]);
   const [usage, setUsage] = useState<UsageData | null>(null);
 
   const [loading, setLoading] = useState(true);
-  const [loadingJobs, setLoadingJobs] = useState(true);
+  const [usageLoading, setUsageLoading] = useState(true);
+  const [jobsLoading, setJobsLoading] = useState(true);
 
-  const [tab, setTab] = useState<
-    "all" | "DRAFT" | "PUBLISHED" | "HIDDEN"
-  >("all");
+  const [filter, setFilter] = useState<Filter>("ALL");
+  const [actionId, setActionId] = useState<string | null>(null);
 
-  const [busyProductId, setBusyProductId] =
-    useState<string | null>(null);
-
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== "undefined"
-      ? window.matchMedia("(max-width: 760px)").matches
-      : false
-  );
-
-  useEffect(() => {
-    const media =
-      window.matchMedia("(max-width: 760px)");
-
-    const handleChange = (
-      event: MediaQueryListEvent
-    ) => {
-      setIsMobile(event.matches);
-    };
-
-    setIsMobile(media.matches);
-
-    media.addEventListener(
-      "change",
-      handleChange
-    );
-
-    return () => {
-      media.removeEventListener(
-        "change",
-        handleChange
-      );
-    };
-  }, []);
-
-  async function loadProducts() {
-    setLoading(true);
+  const loadProducts = useCallback(async () => {
+    if (!sellerId) return;
 
     try {
-      const [
-        productsResponse,
-        usageResponse,
-      ] = await Promise.all([
-        api.get<{ items: Product[] }>(
-          `/api/products?sellerId=${sellerId}&pageSize=100`
-        ),
-
-        api.get<UsageData>(
-          `/api/subscriptions/seller/${sellerId}/usage`
-        ),
-      ]);
-
-      setProducts(
-        productsResponse.items
+      const response = await api.get<{
+        items?: Product[];
+        products?: Product[];
+      }>(
+        `/api/products?sellerId=${encodeURIComponent(
+          sellerId,
+        )}&pageSize=100`,
       );
 
-      setUsage(
-        usageResponse
-      );
-    } catch (err) {
-      push(
-        err instanceof ApiError
-          ? err.message
-          : "خطا در دریافت اطلاعات محصولات.",
-        "error"
+      const items = response.items ?? response.products ?? [];
+
+      setProducts(Array.isArray(items) ? items : []);
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : "دریافت محصولات انجام نشد.",
       );
     } finally {
       setLoading(false);
     }
-  }
-
-  async function loadJobs(
-    silent = false
-  ) {
-    if (!silent) {
-      setLoadingJobs(true);
-    }
-
-    try {
-      const response =
-        await api.get<{
-          jobs: PublishJob[];
-        }>("/api/publishing/jobs");
-
-      setJobs(
-        response.jobs
-      );
-    } catch (err) {
-      if (!silent) {
-        push(
-          err instanceof ApiError
-            ? err.message
-            : "خطا در دریافت وضعیت انتشار.",
-          "error"
-        );
-      }
-    } finally {
-      if (!silent) {
-        setLoadingJobs(false);
-      }
-    }
-  }
-
-  async function load() {
-    await Promise.all([
-      loadProducts(),
-      loadJobs(),
-    ]);
-  }
-
-  useEffect(() => {
-    void load();
-
-    const interval =
-      window.setInterval(() => {
-        void loadJobs(true);
-      }, 5000);
-
-    return () =>
-      window.clearInterval(
-        interval
-      );
   }, [sellerId]);
 
-  const filtered =
-    tab === "all"
-      ? products
-      : products.filter(
-          (p) =>
-            p.visibility === tab
-        );
+  const loadUsage = useCallback(async () => {
+    if (!sellerId) return;
 
-  const productCount =
-    usage?.productCount ??
-    products.length;
+    try {
+      const response = await api.get<UsageData>(
+        `/api/subscriptions/seller/${sellerId}/usage`,
+      );
 
-  const productLimit =
-    usage?.productLimit ??
-    usage?.subscription?.plan
-      .productLimit ??
-    null;
+      setUsage(response);
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : "دریافت وضعیت اشتراک انجام نشد.",
+      );
+    } finally {
+      setUsageLoading(false);
+    }
+  }, [sellerId]);
 
-  const storageUsedMb =
-    usage?.storageUsedMb ?? 0;
+  const loadJobs = useCallback(async () => {
+    try {
+      const response = await api.get<
+        PublishJob[] | { items?: PublishJob[] }
+      >("/api/publishing/jobs");
 
-  const storageLimitMb =
-    usage?.storageLimitMb ??
-    usage?.subscription?.plan
-      .storageLimitMb ??
-    null;
+      const items = Array.isArray(response)
+        ? response
+        : response.items ?? [];
 
-  const productPercent =
-    productLimit &&
-    productLimit > 0
-      ? Math.min(
-          100,
-          Math.round(
-            (productCount /
-              productLimit) *
-              100
-          )
-        )
-      : 0;
+      setJobs(items);
+    } catch {
+      // Publish jobs are supplementary data.
+      // Do not block the product dashboard if this request fails.
+    } finally {
+      setJobsLoading(false);
+    }
+  }, []);
 
-  const storagePercent =
-    getStoragePercent(
-      storageUsedMb,
-      storageLimitMb
+  useEffect(() => {
+    if (!sellerId) {
+      setLoading(false);
+      setUsageLoading(false);
+      setJobsLoading(false);
+      return;
+    }
+
+    void loadProducts();
+    void loadUsage();
+    void loadJobs();
+  }, [sellerId, loadProducts, loadUsage, loadJobs]);
+
+  useEffect(() => {
+    if (!sellerId) return;
+
+    const interval = window.setInterval(() => {
+      void loadJobs();
+      void loadUsage();
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  }, [sellerId, loadJobs, loadUsage]);
+
+  const filteredProducts = useMemo(() => {
+    if (filter === "ALL") return products;
+
+    return products.filter(
+      (product) => product.visibility === filter,
     );
+  }, [products, filter]);
 
-  const storageStatus =
-    getStorageStatus(
-      storagePercent
-    );
+  const productPercent = usage
+    ? getUsagePercent(
+        usage.productCount,
+        usage.productLimit,
+      )
+    : 0;
+
+  const storagePercent = usage
+    ? getUsagePercent(
+        usage.storageUsedMb,
+        usage.storageLimitMb,
+      )
+    : 0;
 
   const productLimitReached =
-    productLimit !== null &&
-    productCount >=
-      productLimit;
+    usage?.productLimit !== null &&
+    usage?.productLimit !== undefined &&
+    usage.productCount >= usage.productLimit;
+
+  const storageLimitReached =
+    usage?.storageLimitMb !== null &&
+    usage?.storageLimitMb !== undefined &&
+    usage.storageUsedMb >= usage.storageLimitMb;
+
+  const subscriptionMessage = getSubscriptionMessage(usage);
 
   const hasActiveSubscription =
-    Boolean(
-      usage?.subscription
-    );
+    Boolean(usage?.subscription) &&
+    getDaysRemaining(usage?.subscription?.endDate) !== null &&
+    (getDaysRemaining(usage?.subscription?.endDate) ?? -1) >= 0;
 
-  function getProductJob(
-    productId: string
-  ) {
-    return getLatestJobForProduct(
-      jobs,
-      productId
-    );
-  }
+  const canCreateProduct =
+    hasActiveSubscription && !productLimitReached;
 
-  function hasActivePublishJob(
-    productId: string
-  ) {
-    const job =
-      getProductJob(productId);
+  const canPublish =
+    hasActiveSubscription && !storageLimitReached;
 
-    return Boolean(
-      job &&
-        isActiveJobStatus(
-          job.status
-        )
-    );
-  }
+  const counts = useMemo(
+    () => ({
+      ALL: products.length,
+      DRAFT: products.filter(
+        (product) => product.visibility === "DRAFT",
+      ).length,
+      PUBLISHED: products.filter(
+        (product) => product.visibility === "PUBLISHED",
+      ).length,
+      HIDDEN: products.filter(
+        (product) => product.visibility === "HIDDEN",
+      ).length,
+    }),
+    [products],
+  );
 
-  async function publish(
-    p: Product
-  ) {
-    if (
-      busyProductId ||
-      hasActivePublishJob(p.id)
-    ) {
+  async function handlePublish(product: Product) {
+    if (!canPublish) {
+      toast.error(
+        "برای انتشار محصول باید اشتراک فعال داشته باشید و ظرفیت ذخیره‌سازی شما تکمیل نشده باشد.",
+      );
       return;
     }
 
-    setBusyProductId(
-      p.id
-    );
-
     try {
-      await api.post(
-        `/api/products/${p.id}/publish`
+      setActionId(product.id);
+
+      await api.post(`/api/products/${product.id}/publish`);
+
+      toast.success(
+        "درخواست انتشار محصول ثبت شد. وضعیت انتشار را می‌توانید در همین صفحه مشاهده کنید.",
       );
 
-      push(
-        "درخواست انتشار ثبت شد. وضعیت صف به‌صورت خودکار به‌روزرسانی می‌شود.",
-        "success"
+      await Promise.all([
+        loadProducts(),
+        loadUsage(),
+        loadJobs(),
+      ]);
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : "انتشار محصول انجام نشد.",
       );
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function handleUnpublish(product: Product) {
+    try {
+      setActionId(product.id);
+
+      await api.post(`/api/products/${product.id}/unpublish`);
+
+      toast.success("محصول از حالت انتشار خارج شد.");
 
       await Promise.all([
         loadProducts(),
         loadJobs(),
       ]);
-    } catch (err) {
-      push(
-        err instanceof ApiError
-          ? err.message
-          : "خطا در انتشار.",
-        "error"
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : "لغو انتشار محصول انجام نشد.",
       );
     } finally {
-      setBusyProductId(
-        null
-      );
+      setActionId(null);
     }
   }
 
-  async function unpublish(
-    p: Product
-  ) {
-    if (
-      busyProductId ||
-      hasActivePublishJob(p.id)
-    ) {
-      return;
-    }
-
-    setBusyProductId(
-      p.id
+  async function handleDelete(product: Product) {
+    const confirmed = window.confirm(
+      `آیا از حذف «${product.name}» مطمئن هستید؟ این عملیات قابل بازگشت نیست.`,
     );
 
-    try {
-      await api.post(
-        `/api/products/${p.id}/unpublish`
-      );
+    if (!confirmed) return;
 
-      push(
-        "درخواست لغو انتشار ثبت شد.",
-        "success"
-      );
+    try {
+      setActionId(product.id);
+
+      await api.delete(`/api/products/${product.id}`);
+
+      toast.success("محصول با موفقیت حذف شد.");
 
       await Promise.all([
         loadProducts(),
+        loadUsage(),
         loadJobs(),
       ]);
-    } catch (err) {
-      push(
-        err instanceof ApiError
-          ? err.message
-          : "خطا در لغو انتشار.",
-        "error"
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : "حذف محصول انجام نشد.",
       );
     } finally {
-      setBusyProductId(
-        null
-      );
+      setActionId(null);
     }
   }
 
-  async function remove(
-    p: Product
-  ) {
-    if (
-      busyProductId ||
-      hasActivePublishJob(p.id)
-    ) {
-      return;
-    }
-
-    if (
-      !confirm(
-        `محصول «${p.name}» حذف شود؟ این عمل قابل بازگشت نیست.`
-      )
-    ) {
-      return;
-    }
-
-    setBusyProductId(
-      p.id
-    );
-
-    try {
-      await api.delete(
-        `/api/products/${p.id}`
-      );
-
-      push(
-        "محصول حذف شد.",
-        "success"
-      );
-
-      await loadProducts();
-    } catch (err) {
-      push(
-        err instanceof ApiError
-          ? err.message
-          : "خطا در حذف.",
-        "error"
-      );
-    } finally {
-      setBusyProductId(
-        null
-      );
-    }
-  }
-
-  function renderAddButton() {
-    if (!hasActiveSubscription) {
-      return (
-        <button
-          className="btn btn-primary"
-          disabled
-          title="برای افزودن محصول باید اشتراک فعال داشته باشید."
-        >
-          + افزودن محصول
-        </button>
-      );
-    }
-
-    if (productLimitReached) {
-      return (
-        <button
-          className="btn btn-primary"
-          disabled
-          title="سقف تعداد محصولات پلن شما تکمیل شده است."
-        >
-          + افزودن محصول
-        </button>
-      );
-    }
-
+  if (!sellerId) {
     return (
-      <Link
-        to="/seller/products/new"
-        className="btn btn-primary"
-      >
-        + افزودن محصول
-      </Link>
+      <div className="space-y-6">
+        <PageHeader
+          title="محصولات"
+          description="مدیریت محصولات فروشگاه"
+        />
+
+        <EmptyState
+          title="فروشنده‌ای برای این حساب پیدا نشد"
+          description="برای مدیریت محصولات، حساب فروشنده باید به این کاربر متصل باشد."
+        />
+      </div>
     );
   }
 
-  function renderProductActions(
-    p: Product
-  ) {
-    const busy =
-      busyProductId === p.id;
-
-    const activeJob =
-      hasActivePublishJob(
-        p.id
-      );
-
+  if (loading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          gap: 6,
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          className="btn btn-outline btn-sm"
-          disabled={
-            busy ||
-            activeJob
-          }
-          onClick={() =>
-            navigate(
-              `/seller/products/${p.id}/edit`
-            )
-          }
-        >
-          ویرایش
-        </button>
+      <div className="space-y-6">
+        <PageHeader
+          title="محصولات"
+          description="مدیریت محصولات فروشگاه"
+        />
 
-        {activeJob ? (
-          <button
-            className="btn btn-primary btn-sm"
-            disabled
-          >
-            {getProductJob(
-              p.id
-            )?.status ===
-            "QUEUED"
-              ? "در صف انتشار..."
-              : "در حال انتشار..."}
-          </button>
-        ) : p.visibility !==
-          "PUBLISHED" ? (
-          <button
-            className="btn btn-primary btn-sm"
-            disabled={busy}
-            onClick={() =>
-              void publish(p)
-            }
-          >
-            {busy
-              ? "در حال ثبت..."
-              : "انتشار"}
-          </button>
-        ) : (
-          <button
-            className="btn btn-outline btn-sm"
-            disabled={busy}
-            onClick={() =>
-              void unpublish(p)
-            }
-          >
-            {busy
-              ? "در حال ثبت..."
-              : "لغو انتشار"}
-          </button>
-        )}
-
-        <button
-          className="btn btn-danger btn-sm"
-          disabled={
-            busy ||
-            activeJob
-          }
-          onClick={() =>
-            void remove(p)
-          }
-        >
-          حذف
-        </button>
+        <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-slate-200 bg-white">
+          <Spinner />
+        </div>
       </div>
     );
   }
 
   return (
-    <>
-      <PageHeader title="محصولات من" />
+    <div className="space-y-6 pb-10">
+      <PageHeader
+        title="محصولات"
+        description="محصولات فروشگاه را ایجاد، ویرایش، منتشر و مدیریت کنید."
+      />
 
-      <div className="content">
+      {/* Subscription warning */}
+      {subscriptionMessage && (
         <div
-          className="section-head"
-          style={{
-            alignItems: isMobile
-              ? "stretch"
-              : "center",
-            flexDirection: isMobile
-              ? "column"
-              : "row",
-            gap: 12,
-          }}
+          className={`rounded-2xl border p-4 ${
+            subscriptionMessage.type === "error"
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-amber-200 bg-amber-50 text-amber-700"
+          }`}
         >
-          <div>
-            <h2
-              style={{
-                marginBottom: 4,
-              }}
-            >
-              محصولات من
-            </h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="font-bold">
+                وضعیت اشتراک
+              </div>
 
-            <div
-              style={{
-                color:
-                  "var(--muted, #64748b)",
-                fontSize: 13,
-              }}
-            >
-              مدیریت، ویرایش و انتشار محصولات فروشگاه
+              <div className="mt-1 text-sm leading-6">
+                {subscriptionMessage.text}
+              </div>
             </div>
-          </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent:
-                isMobile
-                  ? "stretch"
-                  : "flex-end",
-            }}
-          >
-            {renderAddButton()}
+            <a
+              href="/subscription"
+              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-current/10 transition hover:bg-slate-50"
+            >
+              مشاهده اشتراک
+            </a>
           </div>
         </div>
+      )}
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              isMobile
-                ? "1fr"
-                : "repeat(3, minmax(0, 1fr))",
-            gap: 14,
-            marginBottom: 20,
-          }}
-        >
-          <div
-            className="card"
-            style={{
-              padding: 18,
-              minWidth: 0,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent:
-                  "space-between",
-                gap: 10,
-                alignItems:
-                  "flex-start",
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color:
-                      "var(--muted, #64748b)",
-                    marginBottom: 6,
-                  }}
-                >
-                  ظرفیت محصولات
-                </div>
-
-                <div
-                  style={{
-                    fontSize: 24,
-                    fontWeight: 800,
-                  }}
-                >
-                  {productCount}
-                  {productLimit !==
-                  null
-                    ? ` / ${productLimit}`
-                    : ""}
-                </div>
+      {/* Capacity cards */}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-sm font-medium text-slate-500">
+                تعداد محصولات
               </div>
 
-              <div
-                style={{
-                  fontSize: 22,
-                }}
-              >
-                📦
+              <div className="mt-1 text-2xl font-black text-slate-900">
+                {usageLoading || !usage
+                  ? "—"
+                  : formatNumber(usage.productCount)}
               </div>
             </div>
 
-            {productLimit !==
-              null && (
-              <>
-                <div
-                  style={{
-                    height: 7,
-                    background:
-                      "rgba(100,116,139,.14)",
-                    borderRadius: 999,
-                    overflow:
-                      "hidden",
-                    marginTop: 14,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${productPercent}%`,
-                      height: "100%",
-                      borderRadius: 999,
-                      background:
-                        productPercent >=
-                        90
-                          ? "#dc2626"
-                          : productPercent >=
-                            80
-                          ? "#d97706"
-                          : "var(--primary, #2563eb)",
-                      transition:
-                        "width .25s ease",
-                    }}
-                  />
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent:
-                      "space-between",
-                    marginTop: 7,
-                    fontSize: 11,
-                  }}
-                >
-                  <span
-                    style={{
-                      color:
-                        "var(--muted, #64748b)",
-                    }}
-                  >
-                    {productPercent}%
-                  </span>
-
-                  <span
-                    style={{
-                      color:
-                        "var(--muted, #64748b)",
-                    }}
-                  >
-                    {productLimit -
-                      productCount >
-                    0
-                      ? `${productLimit - productCount} ظرفیت باقی‌مانده`
-                      : "ظرفیت تکمیل شده"}
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div
-            className="card"
-            style={{
-              padding: 18,
-              minWidth: 0,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent:
-                  "space-between",
-                gap: 10,
-                alignItems:
-                  "flex-start",
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color:
-                      "var(--muted, #64748b)",
-                    marginBottom: 6,
-                  }}
-                >
-                  فضای ذخیره‌سازی
-                </div>
-
-                <div
-                  style={{
-                    fontSize: 24,
-                    fontWeight: 800,
-                  }}
-                >
-                  {formatStorage(
-                    storageUsedMb
-                  )}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  fontSize: 22,
-                }}
-              >
-                💾
-              </div>
+            <div className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
+              {usage?.productLimit === null
+                ? "نامحدود"
+                : usage?.productLimit !== undefined
+                  ? `حداکثر ${formatNumber(
+                      usage.productLimit,
+                    )}`
+                  : "—"}
             </div>
-
-            {storageLimitMb !==
-            null ? (
-              <>
-                <div
-                  style={{
-                    height: 7,
-                    background:
-                      "rgba(100,116,139,.14)",
-                    borderRadius: 999,
-                    overflow:
-                      "hidden",
-                    marginTop: 14,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${storagePercent}%`,
-                      height: "100%",
-                      borderRadius: 999,
-                      background:
-                        storagePercent >=
-                        90
-                          ? "#dc2626"
-                          : storagePercent >=
-                            80
-                          ? "#d97706"
-                          : "var(--primary, #2563eb)",
-                      transition:
-                        "width .25s ease",
-                    }}
-                  />
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent:
-                      "space-between",
-                    marginTop: 7,
-                    fontSize: 11,
-                  }}
-                >
-                  <span
-                    style={{
-                      color:
-                        storageStatus.className ===
-                        "danger"
-                          ? "#dc2626"
-                          : storageStatus.className ===
-                            "warning"
-                          ? "#d97706"
-                          : "var(--muted, #64748b)",
-                    }}
-                  >
-                    {
-                      storageStatus.label
-                    }
-                  </span>
-
-                  <span
-                    style={{
-                      color:
-                        "var(--muted, #64748b)",
-                    }}
-                  >
-                    {formatStorage(
-                      storageLimitMb
-                    )}
-                  </span>
-                </div>
-              </>
-            ) : (
-              <div
-                style={{
-                  marginTop: 14,
-                  fontSize: 12,
-                  color:
-                    "var(--muted, #64748b)",
-                }}
-              >
-                بدون محدودیت ذخیره‌سازی
-              </div>
-            )}
           </div>
 
-          <div
-            className="card"
-            style={{
-              padding: 18,
-              minWidth: 0,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent:
-                  "space-between",
-                gap: 10,
-                alignItems:
-                  "flex-start",
-              }}
-            >
-              <div>
+          {usage && (
+            <>
+              <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
                 <div
+                  className={`h-full rounded-full ${getProgressClass(
+                    productPercent,
+                  )}`}
                   style={{
-                    fontSize: 13,
-                    color:
-                      "var(--muted, #64748b)",
-                    marginBottom: 6,
+                    width: `${productPercent}%`,
                   }}
-                >
-                  پلن فعال
-                </div>
-
-                <div
-                  style={{
-                    fontSize: 20,
-                    fontWeight: 800,
-                  }}
-                >
-                  {usage
-                    ?.subscription?.plan
-                    .name ??
-                    "بدون اشتراک"}
-                </div>
+                />
               </div>
 
-              <div
-                style={{
-                  fontSize: 22,
-                }}
-              >
-                ✨
+              <div className="mt-2 flex justify-between text-xs text-slate-400">
+                <span>ظرفیت مصرف‌شده</span>
+                <span>
+                  {usage.productLimit === null
+                    ? "نامحدود"
+                    : `${Math.round(productPercent)}٪`}
+                </span>
               </div>
-            </div>
-
-            {usage?.subscription ? (
-              <div
-                style={{
-                  marginTop: 12,
-                  fontSize: 12,
-                  color:
-                    "var(--muted, #64748b)",
-                  lineHeight: 1.9,
-                }}
-              >
-                <div>
-                  شروع:{" "}
-                  {fmtDate(
-                    usage
-                      .subscription
-                      .startDate
-                  )}
-                </div>
-
-                <div>
-                  پایان:{" "}
-                  {fmtDate(
-                    usage
-                      .subscription
-                      .endDate
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding:
-                    "9px 11px",
-                  borderRadius: 10,
-                  background:
-                    "rgba(239,68,68,.08)",
-                  color: "#dc2626",
-                  fontSize: 12,
-                }}
-              >
-                برای آپلود فایل و استفاده کامل از امکانات، اشتراک فعال لازم است.
-              </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
 
-        {productLimitReached && (
-          <div
-            className="alert alert-error"
-            style={{
-              marginBottom: 14,
-            }}
-          >
-            ظرفیت محصولات این پلن تکمیل شده است.
-            برای افزودن محصول جدید، ابتدا محصولی حذف کنید یا پلن خود را ارتقا دهید.
-          </div>
-        )}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-sm font-medium text-slate-500">
+                فضای ذخیره‌سازی
+              </div>
 
-        {!productLimitReached &&
-          productLimit !== null &&
-          productPercent >= 80 && (
-            <div
-              className="alert alert-warning"
-              style={{
-                marginBottom: 14,
-              }}
+              <div className="mt-1 text-2xl font-black text-slate-900">
+                {usageLoading || !usage
+                  ? "—"
+                  : `${formatNumber(
+                      Number(usage.storageUsedMb.toFixed(1)),
+                    )} MB`}
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
+              {usage?.storageLimitMb === null
+                ? "نامحدود"
+                : usage?.storageLimitMb !== undefined
+                  ? `${formatNumber(
+                      usage.storageLimitMb,
+                    )} MB`
+                  : "—"}
+            </div>
+          </div>
+
+          {usage && (
+            <>
+              <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className={`h-full rounded-full ${getProgressClass(
+                    storagePercent,
+                  )}`}
+                  style={{
+                    width: `${storagePercent}%`,
+                  }}
+                />
+              </div>
+
+              <div className="mt-2 flex justify-between text-xs text-slate-400">
+                <span>فضای مصرف‌شده</span>
+                <span>
+                  {usage.storageLimitMb === null
+                    ? "نامحدود"
+                    : `${Math.round(storagePercent)}٪`}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-sm font-medium text-slate-500">
+            اشتراک
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-bold ${
+                hasActiveSubscription
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-red-50 text-red-700"
+              }`}
             >
-              به {productPercent}% ظرفیت محصولات پلن خود رسیده‌اید.
+              {hasActiveSubscription ? "فعال" : "غیرفعال"}
+            </span>
+
+            {usage?.subscription?.plan?.name && (
+              <span className="text-sm font-semibold text-slate-800">
+                {usage.subscription.plan.name}
+              </span>
+            )}
+          </div>
+
+          {usage?.subscription?.endDate && (
+            <div className="mt-4 text-sm text-slate-500">
+              پایان اشتراک:
+              <span className="mr-1 font-semibold text-slate-700">
+                {fmtDate(usage.subscription.endDate)}
+              </span>
             </div>
           )}
 
-        {storageLimitMb !==
-          null &&
-          storagePercent >=
-            80 && (
-            <div
-              className={
-                storagePercent >=
-                90
-                  ? "alert alert-error"
-                  : "alert alert-warning"
-              }
-              style={{
-                marginBottom: 14,
-              }}
-            >
-              مصرف فضای ذخیره‌سازی شما{" "}
-              {storagePercent}% است.
-              فایل‌های 3D و تصاویر فضای بیشتری مصرف می‌کنند.
+          {usage?.subscription?.endDate && (
+            <div className="mt-2 text-xs text-slate-400">
+              {(() => {
+                const days = getDaysRemaining(
+                  usage.subscription.endDate,
+                );
+
+                if (days === null) return "—";
+
+                if (days < 0) {
+                  return "اشتراک منقضی شده است";
+                }
+
+                return `${formatNumber(days)} روز باقی‌مانده`;
+              })()}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Capacity warnings */}
+      {(productLimitReached || storageLimitReached) && (
+        <section className="grid gap-3 md:grid-cols-2">
+          {productLimitReached && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <div className="font-bold">
+                ظرفیت تعداد محصولات تکمیل شده است.
+              </div>
+
+              <div className="mt-1 leading-6">
+                برای افزودن محصول جدید، ابتدا باید پلن فروشگاه
+                ارتقا پیدا کند یا ظرفیت بیشتری فعال شود.
+              </div>
             </div>
           )}
 
-        <div
-          className="tabs"
-          style={{
-            overflowX: "auto",
-            whiteSpace:
-              "nowrap",
-            marginBottom: 16,
+          {storageLimitReached && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <div className="font-bold">
+                ظرفیت ذخیره‌سازی تکمیل شده است.
+              </div>
+
+              <div className="mt-1 leading-6">
+                برای انتشار یا آپلود فایل‌های بیشتر، فضای ذخیره‌سازی
+                بیشتری نیاز است.
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Header actions */}
+      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">
+            لیست محصولات
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            {formatNumber(products.length)} محصول در فروشگاه
+            ثبت شده است.
+          </p>
+        </div>
+
+        <a
+          href="/products/new"
+          aria-disabled={!canCreateProduct}
+          onClick={(event) => {
+            if (!canCreateProduct) {
+              event.preventDefault();
+
+              toast.error(
+                !hasActiveSubscription
+                  ? "برای افزودن محصول باید اشتراک فعال داشته باشید."
+                  : "ظرفیت تعداد محصولات این پلن تکمیل شده است.",
+              );
+            }
           }}
+          className={`inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-bold shadow-sm transition ${
+            canCreateProduct
+              ? "bg-slate-900 text-white hover:bg-slate-800"
+              : "cursor-not-allowed bg-slate-200 text-slate-400"
+          }`}
         >
+          + افزودن محصول
+        </a>
+      </section>
+
+      {/* Filters */}
+      <section className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+        <div className="flex min-w-max gap-2">
           {(
             [
-              "all",
-              "DRAFT",
-              "PUBLISHED",
-              "HIDDEN",
-            ] as const
-          ).map((t) => {
-            const count =
-              t === "all"
-                ? products.length
-                : products.filter(
-                    (p) =>
-                      p.visibility ===
-                      t
-                  ).length;
+              ["ALL", "همه"],
+              ["DRAFT", "پیش‌نویس"],
+              ["PUBLISHED", "منتشرشده"],
+              ["HIDDEN", "مخفی"],
+            ] as [Filter, string][]
+          ).map(([value, label]) => {
+            const active = filter === value;
 
             return (
               <button
-                key={t}
-                className={
-                  tab === t
-                    ? "active"
-                    : ""
-                }
-                onClick={() =>
-                  setTab(t)
-                }
+                key={value}
+                type="button"
+                onClick={() => setFilter(value)}
+                className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                  active
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                }`}
               >
-                {t === "all"
-                  ? "همه"
-                  : t === "DRAFT"
-                  ? "پیش‌نویس"
-                  : t ===
-                    "PUBLISHED"
-                  ? "منتشرشده"
-                  : "مخفی"}{" "}
+                {label}
+
                 <span
-                  style={{
-                    opacity:
-                      0.65,
-                    marginRight: 4,
-                  }}
+                  className={`mr-2 rounded-full px-1.5 py-0.5 text-[11px] ${
+                    active
+                      ? "bg-white/15 text-white"
+                      : "bg-slate-100 text-slate-500"
+                  }`}
                 >
-                  {count}
+                  {formatNumber(counts[value])}
                 </span>
               </button>
             );
           })}
         </div>
+      </section>
 
-        {loading ||
-        loadingJobs ? (
-          <Spinner />
-        ) : filtered.length ===
-          0 ? (
-          <EmptyState
-            icon="📦"
-            text="محصولی در این بخش نیست."
-          />
-        ) : isMobile ? (
-          <div
-            style={{
-              display: "grid",
-              gap: 12,
-            }}
-          >
-            {filtered.map(
-              (p) => {
-                const job =
-                  getProductJob(
-                    p.id
-                  );
+      {/* Product list */}
+      {filteredProducts.length === 0 ? (
+        <EmptyState
+          title={
+            products.length === 0
+              ? "هنوز محصولی ندارید"
+              : "محصولی در این فیلتر وجود ندارد"
+          }
+          description={
+            products.length === 0
+              ? "از دکمه افزودن محصول برای ساخت اولین محصول فروشگاه استفاده کنید."
+              : "فیلتر دیگری را انتخاب کنید تا محصولات بیشتری نمایش داده شوند."
+          }
+        />
+      ) : (
+        <section className="grid gap-4">
+          {filteredProducts.map((product) => {
+            const runningJob = getJobForProduct(
+              jobs,
+              product.id,
+            );
 
-                return (
-                  <div
-                    key={p.id}
-                    className="card"
-                    style={{
-                      padding: 15,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display:
-                          "flex",
-                        justifyContent:
-                          "space-between",
-                        gap: 12,
-                        alignItems:
-                          "flex-start",
-                      }}
-                    >
-                      <div
-                        style={{
-                          minWidth: 0,
-                          flex: 1,
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontWeight:
-                              800,
-                            fontSize:
-                              15,
-                            lineHeight:
-                              1.7,
-                            wordBreak:
-                              "break-word",
-                          }}
-                        >
-                          {p.name}
-                        </div>
+            const finishedJob = getJobStatus(
+              jobs,
+              product.id,
+            );
 
-                        <div
-                          style={{
-                            marginTop: 5,
-                            fontSize:
-                              12,
-                            color:
-                              "var(--muted, #64748b)",
-                          }}
-                        >
-                          ایجاد شده در{" "}
-                          {fmtDate(
-                            p.createdAt
-                          )}
-                        </div>
+            const busy = actionId === product.id;
+
+            return (
+              <article
+                key={product.id}
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300"
+              >
+                <div className="p-4 sm:p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="truncate text-base font-bold text-slate-900 sm:text-lg">
+                          {product.name}
+                        </h3>
+
+                        <VisibilityBadge
+                          visibility={product.visibility}
+                        />
                       </div>
 
-                      <VisibilityBadge
-                        v={
-                          p.visibility
-                        }
-                      />
+                      {product.slug && (
+                        <div className="mt-1 truncate text-xs text-slate-400">
+                          /{product.slug}
+                        </div>
+                      )}
+
+                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
+                        {product.category?.name && (
+                          <span>
+                            دسته‌بندی:{" "}
+                            <span className="font-medium text-slate-700">
+                              {product.category.name}
+                            </span>
+                          </span>
+                        )}
+
+                        {product.updatedAt && (
+                          <span>
+                            آخرین تغییر:{" "}
+                            <span className="font-medium text-slate-700">
+                              {fmtDate(product.updatedAt)}
+                            </span>
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {p.hasUnpublishedChanges && (
-                      <div
-                        style={{
-                          marginTop: 11,
-                        }}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <a
+                        href={`/products/${product.id}/edit`}
+                        className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                       >
-                        <span className="badge badge-warning">
-                          تغییرات منتشرنشده
-                        </span>
-                      </div>
-                    )}
+                        ویرایش
+                      </a>
 
-                    <PublishJobState
-                      job={job}
-                    />
-
-                    <div
-                      style={{
-                        marginTop: 14,
-                        paddingTop:
-                          12,
-                        borderTop:
-                          "1px solid rgba(148,163,184,.18)",
-                      }}
-                    >
-                      {renderProductActions(
-                        p
+                      {product.visibility === "PUBLISHED" ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            void handleUnpublish(product)
+                          }
+                          className="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {busy ? "در حال انجام..." : "لغو انتشار"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={
+                            busy ||
+                            !canPublish ||
+                            Boolean(runningJob)
+                          }
+                          onClick={() =>
+                            void handlePublish(product)
+                          }
+                          className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {runningJob
+                            ? "در حال انتشار..."
+                            : busy
+                              ? "در حال انجام..."
+                              : "انتشار"}
+                        </button>
                       )}
+
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          void handleDelete(product)
+                        }
+                        className="inline-flex items-center justify-center rounded-xl border border-red-200 px-3.5 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        حذف
+                      </button>
                     </div>
                   </div>
-                );
-              }
-            )}
-          </div>
-        ) : (
-          <div className="card table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>
-                    محصول
-                  </th>
-                  <th>
-                    وضعیت
-                  </th>
-                  <th>
-                    انتشار
-                  </th>
-                  <th>
-                    تاریخ ایجاد
-                  </th>
-                  <th>
-                    عملیات
-                  </th>
-                </tr>
-              </thead>
 
-              <tbody>
-                {filtered.map(
-                  (p) => {
-                    const job =
-                      getProductJob(
-                        p.id
-                      );
+                  {(runningJob || finishedJob) && (
+                    <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                      <PublishJobStatus
+                        job={runningJob ?? finishedJob!}
+                      />
+                    </div>
+                  )}
 
-                    return (
-                      <tr
-                        key={p.id}
-                      >
-                        <td>
-                          <div
-                            style={{
-                              display:
-                                "flex",
-                              alignItems:
-                                "center",
-                              gap: 8,
-                              flexWrap:
-                                "wrap",
-                            }}
-                          >
-                            <span>
-                              {p.name}
-                            </span>
+                  {product.visibility === "PUBLISHED" &&
+                    product.hasUnpublishedChanges && (
+                      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                        تغییرات جدیدی روی محصول ذخیره شده و هنوز
+                        نسخه جدید آن منتشر نشده است.
+                      </div>
+                    )}
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      )}
 
-                            {p.hasUnpublishedChanges && (
-                              <span className="badge badge-warning">
-                                تغییرات منتشرنشده
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        <td>
-                          <VisibilityBadge
-                            v={
-                              p.visibility
-                            }
-                          />
-                        </td>
-
-                        <td
-                          style={{
-                            minWidth:
-                              190,
-                          }}
-                        >
-                          <PublishJobState
-                            job={job}
-                          />
-                        </td>
-
-                        <td>
-                          {fmtDate(
-                            p.createdAt
-                          )}
-                        </td>
-
-                        <td>
-                          {renderProductActions(
-                            p
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  }
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </>
+      {jobsLoading && jobs.length === 0 && (
+        <div className="text-center text-xs text-slate-400">
+          در حال بررسی وضعیت انتشار...
+        </div>
+      )}
+    </div>
   );
 }
