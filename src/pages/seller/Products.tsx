@@ -7,10 +7,11 @@ import {
   EmptyState,
   Spinner,
   VisibilityBadge,
+  JobStatusBadge,
   fmtDate,
 } from "../../components/ui";
 import { useToast } from "../../lib/toast";
-import type { Product } from "../../types";
+import type { Product, PublishJob } from "../../types";
 
 type UsageData = {
   productCount: number;
@@ -73,6 +74,164 @@ function getStorageStatus(percent: number) {
   };
 }
 
+function isActiveJobStatus(status?: string | null) {
+  return (
+    status === "QUEUED" ||
+    status === "PROCESSING"
+  );
+}
+
+function getLatestJobForProduct(
+  jobs: PublishJob[],
+  productId: string
+) {
+  return jobs.find(
+    (job) =>
+      job.productId === productId
+  );
+}
+
+function PublishJobState({
+  job,
+}: {
+  job?: PublishJob;
+}) {
+  if (!job) {
+    return null;
+  }
+
+  if (job.status === "SUCCESS") {
+    return (
+      <div
+        style={{
+          marginTop: 10,
+          padding: "8px 10px",
+          borderRadius: 10,
+          background: "rgba(34,197,94,.08)",
+          border: "1px solid rgba(34,197,94,.18)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            flexWrap: "wrap",
+          }}
+        >
+          <JobStatusBadge v={job.status} />
+
+          <span
+            style={{
+              fontSize: 12,
+              color: "var(--muted, #64748b)",
+            }}
+          >
+            انتشار با موفقیت انجام شد.
+          </span>
+        </div>
+
+        {job.commitSha && (
+          <div
+            style={{
+              marginTop: 5,
+              fontSize: 11,
+              color: "var(--muted, #64748b)",
+            }}
+          >
+            Commit:{" "}
+            <code>
+              {job.commitSha.slice(0, 8)}
+            </code>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (job.status === "FAILED") {
+    return (
+      <div
+        style={{
+          marginTop: 10,
+          padding: "8px 10px",
+          borderRadius: 10,
+          background: "rgba(239,68,68,.08)",
+          border: "1px solid rgba(239,68,68,.18)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            flexWrap: "wrap",
+          }}
+        >
+          <JobStatusBadge v={job.status} />
+
+          <span
+            style={{
+              fontSize: 12,
+              color: "#b91c1c",
+            }}
+          >
+            انتشار ناموفق بود.
+          </span>
+        </div>
+
+        {job.errorMessage && (
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 12,
+              lineHeight: 1.7,
+              color: "#991b1b",
+              wordBreak: "break-word",
+            }}
+          >
+            {job.errorMessage}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        padding: "8px 10px",
+        borderRadius: 10,
+        background: "rgba(59,130,246,.07)",
+        border: "1px solid rgba(59,130,246,.15)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 7,
+          flexWrap: "wrap",
+        }}
+      >
+        <JobStatusBadge v={job.status} />
+
+        <span
+          style={{
+            fontSize: 12,
+            color: "var(--muted, #64748b)",
+          }}
+        >
+          {job.status === "QUEUED"
+            ? "در صف انتشار قرار دارد."
+            : "در حال پردازش و ساخت نسخه عمومی است."}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function SellerProducts() {
   const { user } = useAuth();
   const { push } = useToast();
@@ -81,12 +240,18 @@ export default function SellerProducts() {
   const sellerId = user!.seller!.id;
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [jobs, setJobs] = useState<PublishJob[]>([]);
   const [usage, setUsage] = useState<UsageData | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [loadingJobs, setLoadingJobs] = useState(true);
+
   const [tab, setTab] = useState<
     "all" | "DRAFT" | "PUBLISHED" | "HIDDEN"
   >("all");
+
+  const [busyProductId, setBusyProductId] =
+    useState<string | null>(null);
 
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined"
@@ -95,38 +260,54 @@ export default function SellerProducts() {
   );
 
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 760px)");
+    const media =
+      window.matchMedia("(max-width: 760px)");
 
-    const handleChange = (event: MediaQueryListEvent) => {
+    const handleChange = (
+      event: MediaQueryListEvent
+    ) => {
       setIsMobile(event.matches);
     };
 
     setIsMobile(media.matches);
 
-    media.addEventListener("change", handleChange);
+    media.addEventListener(
+      "change",
+      handleChange
+    );
 
     return () => {
-      media.removeEventListener("change", handleChange);
+      media.removeEventListener(
+        "change",
+        handleChange
+      );
     };
   }, []);
 
-  async function load() {
+  async function loadProducts() {
     setLoading(true);
 
     try {
-      const [productsResponse, usageResponse] =
-        await Promise.all([
-          api.get<{ items: Product[] }>(
-            `/api/products?sellerId=${sellerId}&pageSize=100`
-          ),
+      const [
+        productsResponse,
+        usageResponse,
+      ] = await Promise.all([
+        api.get<{ items: Product[] }>(
+          `/api/products?sellerId=${sellerId}&pageSize=100`
+        ),
 
-          api.get<UsageData>(
-            `/api/subscriptions/seller/${sellerId}/usage`
-          ),
-        ]);
+        api.get<UsageData>(
+          `/api/subscriptions/seller/${sellerId}/usage`
+        ),
+      ]);
 
-      setProducts(productsResponse.items);
-      setUsage(usageResponse);
+      setProducts(
+        productsResponse.items
+      );
+
+      setUsage(
+        usageResponse
+      );
     } catch (err) {
       push(
         err instanceof ApiError
@@ -139,23 +320,75 @@ export default function SellerProducts() {
     }
   }
 
+  async function loadJobs(
+    silent = false
+  ) {
+    if (!silent) {
+      setLoadingJobs(true);
+    }
+
+    try {
+      const response =
+        await api.get<{
+          jobs: PublishJob[];
+        }>("/api/publishing/jobs");
+
+      setJobs(
+        response.jobs
+      );
+    } catch (err) {
+      if (!silent) {
+        push(
+          err instanceof ApiError
+            ? err.message
+            : "خطا در دریافت وضعیت انتشار.",
+          "error"
+        );
+      }
+    } finally {
+      if (!silent) {
+        setLoadingJobs(false);
+      }
+    }
+  }
+
+  async function load() {
+    await Promise.all([
+      loadProducts(),
+      loadJobs(),
+    ]);
+  }
+
   useEffect(() => {
-    load();
+    void load();
+
+    const interval =
+      window.setInterval(() => {
+        void loadJobs(true);
+      }, 5000);
+
+    return () =>
+      window.clearInterval(
+        interval
+      );
   }, [sellerId]);
 
   const filtered =
     tab === "all"
       ? products
       : products.filter(
-          (p) => p.visibility === tab
+          (p) =>
+            p.visibility === tab
         );
 
   const productCount =
-    usage?.productCount ?? products.length;
+    usage?.productCount ??
+    products.length;
 
   const productLimit =
     usage?.productLimit ??
-    usage?.subscription?.plan.productLimit ??
+    usage?.subscription?.plan
+      .productLimit ??
     null;
 
   const storageUsedMb =
@@ -163,50 +396,95 @@ export default function SellerProducts() {
 
   const storageLimitMb =
     usage?.storageLimitMb ??
-    usage?.subscription?.plan.storageLimitMb ??
+    usage?.subscription?.plan
+      .storageLimitMb ??
     null;
 
   const productPercent =
-    productLimit && productLimit > 0
+    productLimit &&
+    productLimit > 0
       ? Math.min(
           100,
           Math.round(
-            (productCount / productLimit) * 100
+            (productCount /
+              productLimit) *
+              100
           )
         )
       : 0;
 
-  const storagePercent = getStoragePercent(
-    storageUsedMb,
-    storageLimitMb
-  );
+  const storagePercent =
+    getStoragePercent(
+      storageUsedMb,
+      storageLimitMb
+    );
 
   const storageStatus =
-    getStorageStatus(storagePercent);
+    getStorageStatus(
+      storagePercent
+    );
 
   const productLimitReached =
     productLimit !== null &&
-    productCount >= productLimit;
+    productCount >=
+      productLimit;
 
   const hasActiveSubscription =
-    Boolean(usage?.subscription);
+    Boolean(
+      usage?.subscription
+    );
 
-  const canCreateProduct =
-    hasActiveSubscription &&
-    !productLimitReached;
+  function getProductJob(
+    productId: string
+  ) {
+    return getLatestJobForProduct(
+      jobs,
+      productId
+    );
+  }
 
-  async function publish(p: Product) {
+  function hasActivePublishJob(
+    productId: string
+  ) {
+    const job =
+      getProductJob(productId);
+
+    return Boolean(
+      job &&
+        isActiveJobStatus(
+          job.status
+        )
+    );
+  }
+
+  async function publish(
+    p: Product
+  ) {
+    if (
+      busyProductId ||
+      hasActivePublishJob(p.id)
+    ) {
+      return;
+    }
+
+    setBusyProductId(
+      p.id
+    );
+
     try {
       await api.post(
         `/api/products/${p.id}/publish`
       );
 
       push(
-        "درخواست انتشار ثبت شد — وضعیت در صف انتشار قابل پیگیری است.",
+        "درخواست انتشار ثبت شد. وضعیت صف به‌صورت خودکار به‌روزرسانی می‌شود.",
         "success"
       );
 
-      load();
+      await Promise.all([
+        loadProducts(),
+        loadJobs(),
+      ]);
     } catch (err) {
       push(
         err instanceof ApiError
@@ -214,10 +492,27 @@ export default function SellerProducts() {
           : "خطا در انتشار.",
         "error"
       );
+    } finally {
+      setBusyProductId(
+        null
+      );
     }
   }
 
-  async function unpublish(p: Product) {
+  async function unpublish(
+    p: Product
+  ) {
+    if (
+      busyProductId ||
+      hasActivePublishJob(p.id)
+    ) {
+      return;
+    }
+
+    setBusyProductId(
+      p.id
+    );
+
     try {
       await api.post(
         `/api/products/${p.id}/unpublish`
@@ -228,7 +523,10 @@ export default function SellerProducts() {
         "success"
       );
 
-      load();
+      await Promise.all([
+        loadProducts(),
+        loadJobs(),
+      ]);
     } catch (err) {
       push(
         err instanceof ApiError
@@ -236,10 +534,23 @@ export default function SellerProducts() {
           : "خطا در لغو انتشار.",
         "error"
       );
+    } finally {
+      setBusyProductId(
+        null
+      );
     }
   }
 
-  async function remove(p: Product) {
+  async function remove(
+    p: Product
+  ) {
+    if (
+      busyProductId ||
+      hasActivePublishJob(p.id)
+    ) {
+      return;
+    }
+
     if (
       !confirm(
         `محصول «${p.name}» حذف شود؟ این عمل قابل بازگشت نیست.`
@@ -248,20 +559,31 @@ export default function SellerProducts() {
       return;
     }
 
+    setBusyProductId(
+      p.id
+    );
+
     try {
       await api.delete(
         `/api/products/${p.id}`
       );
 
-      push("محصول حذف شد.", "success");
+      push(
+        "محصول حذف شد.",
+        "success"
+      );
 
-      load();
+      await loadProducts();
     } catch (err) {
       push(
         err instanceof ApiError
           ? err.message
           : "خطا در حذف.",
         "error"
+      );
+    } finally {
+      setBusyProductId(
+        null
       );
     }
   }
@@ -301,7 +623,17 @@ export default function SellerProducts() {
     );
   }
 
-  function renderProductActions(p: Product) {
+  function renderProductActions(
+    p: Product
+  ) {
+    const busy =
+      busyProductId === p.id;
+
+    const activeJob =
+      hasActivePublishJob(
+        p.id
+      );
+
     return (
       <div
         style={{
@@ -312,6 +644,10 @@ export default function SellerProducts() {
       >
         <button
           className="btn btn-outline btn-sm"
+          disabled={
+            busy ||
+            activeJob
+          }
           onClick={() =>
             navigate(
               `/seller/products/${p.id}/edit`
@@ -321,25 +657,54 @@ export default function SellerProducts() {
           ویرایش
         </button>
 
-        {p.visibility !== "PUBLISHED" ? (
+        {activeJob ? (
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => publish(p)}
+            disabled
           >
-            انتشار
+            {getProductJob(
+              p.id
+            )?.status ===
+            "QUEUED"
+              ? "در صف انتشار..."
+              : "در حال انتشار..."}
+          </button>
+        ) : p.visibility !==
+          "PUBLISHED" ? (
+          <button
+            className="btn btn-primary btn-sm"
+            disabled={busy}
+            onClick={() =>
+              void publish(p)
+            }
+          >
+            {busy
+              ? "در حال ثبت..."
+              : "انتشار"}
           </button>
         ) : (
           <button
             className="btn btn-outline btn-sm"
-            onClick={() => unpublish(p)}
+            disabled={busy}
+            onClick={() =>
+              void unpublish(p)
+            }
           >
-            لغو انتشار
+            {busy
+              ? "در حال ثبت..."
+              : "لغو انتشار"}
           </button>
         )}
 
         <button
           className="btn btn-danger btn-sm"
-          onClick={() => remove(p)}
+          disabled={
+            busy ||
+            activeJob
+          }
+          onClick={() =>
+            void remove(p)
+          }
         >
           حذف
         </button>
@@ -352,8 +717,6 @@ export default function SellerProducts() {
       <PageHeader title="محصولات من" />
 
       <div className="content">
-
-        {/* Header */}
         <div
           className="section-head"
           style={{
@@ -367,13 +730,18 @@ export default function SellerProducts() {
           }}
         >
           <div>
-            <h2 style={{ marginBottom: 4 }}>
+            <h2
+              style={{
+                marginBottom: 4,
+              }}
+            >
               محصولات من
             </h2>
 
             <div
               style={{
-                color: "var(--muted, #64748b)",
+                color:
+                  "var(--muted, #64748b)",
                 fontSize: 13,
               }}
             >
@@ -384,27 +752,27 @@ export default function SellerProducts() {
           <div
             style={{
               display: "flex",
-              justifyContent: isMobile
-                ? "stretch"
-                : "flex-end",
+              justifyContent:
+                isMobile
+                  ? "stretch"
+                  : "flex-end",
             }}
           >
             {renderAddButton()}
           </div>
         </div>
 
-        {/* Usage Cards */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isMobile
-              ? "1fr"
-              : "repeat(3, minmax(0, 1fr))",
+            gridTemplateColumns:
+              isMobile
+                ? "1fr"
+                : "repeat(3, minmax(0, 1fr))",
             gap: 14,
             marginBottom: 20,
           }}
         >
-          {/* Product Capacity */}
           <div
             className="card"
             style={{
@@ -415,16 +783,19 @@ export default function SellerProducts() {
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
+                justifyContent:
+                  "space-between",
                 gap: 10,
-                alignItems: "flex-start",
+                alignItems:
+                  "flex-start",
               }}
             >
               <div>
                 <div
                   style={{
                     fontSize: 13,
-                    color: "var(--muted, #64748b)",
+                    color:
+                      "var(--muted, #64748b)",
                     marginBottom: 6,
                   }}
                 >
@@ -438,7 +809,8 @@ export default function SellerProducts() {
                   }}
                 >
                   {productCount}
-                  {productLimit !== null
+                  {productLimit !==
+                  null
                     ? ` / ${productLimit}`
                     : ""}
                 </div>
@@ -453,7 +825,8 @@ export default function SellerProducts() {
               </div>
             </div>
 
-            {productLimit !== null && (
+            {productLimit !==
+              null && (
               <>
                 <div
                   style={{
@@ -461,7 +834,8 @@ export default function SellerProducts() {
                     background:
                       "rgba(100,116,139,.14)",
                     borderRadius: 999,
-                    overflow: "hidden",
+                    overflow:
+                      "hidden",
                     marginTop: 14,
                   }}
                 >
@@ -471,36 +845,54 @@ export default function SellerProducts() {
                       height: "100%",
                       borderRadius: 999,
                       background:
-                        productLimitReached
-                          ? "#ef4444"
-                          : productPercent >= 80
-                          ? "#f59e0b"
-                          : "linear-gradient(90deg,#635bff,#8b5cf6)",
+                        productPercent >=
+                        90
+                          ? "#dc2626"
+                          : productPercent >=
+                            80
+                          ? "#d97706"
+                          : "var(--primary, #2563eb)",
+                      transition:
+                        "width .25s ease",
                     }}
                   />
                 </div>
 
                 <div
                   style={{
-                    marginTop: 8,
-                    fontSize: 12,
-                    color:
-                      productLimitReached
-                        ? "#dc2626"
-                        : productPercent >= 80
-                        ? "#d97706"
-                        : "var(--muted, #64748b)",
+                    display: "flex",
+                    justifyContent:
+                      "space-between",
+                    marginTop: 7,
+                    fontSize: 11,
                   }}
                 >
-                  {productLimitReached
-                    ? "سقف محصولات پلن شما تکمیل شده است."
-                    : `${productPercent}% از ظرفیت پلن مصرف شده`}
+                  <span
+                    style={{
+                      color:
+                        "var(--muted, #64748b)",
+                    }}
+                  >
+                    {productPercent}%
+                  </span>
+
+                  <span
+                    style={{
+                      color:
+                        "var(--muted, #64748b)",
+                    }}
+                  >
+                    {productLimit -
+                      productCount >
+                    0
+                      ? `${productLimit - productCount} ظرفیت باقی‌مانده`
+                      : "ظرفیت تکمیل شده"}
+                  </span>
                 </div>
               </>
             )}
           </div>
 
-          {/* Storage */}
           <div
             className="card"
             style={{
@@ -511,16 +903,19 @@ export default function SellerProducts() {
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
+                justifyContent:
+                  "space-between",
                 gap: 10,
-                alignItems: "flex-start",
+                alignItems:
+                  "flex-start",
               }}
             >
               <div>
                 <div
                   style={{
                     fontSize: 13,
-                    color: "var(--muted, #64748b)",
+                    color:
+                      "var(--muted, #64748b)",
                     marginBottom: 6,
                   }}
                 >
@@ -533,7 +928,9 @@ export default function SellerProducts() {
                     fontWeight: 800,
                   }}
                 >
-                  {formatStorage(storageUsedMb)}
+                  {formatStorage(
+                    storageUsedMb
+                  )}
                 </div>
               </div>
 
@@ -542,11 +939,12 @@ export default function SellerProducts() {
                   fontSize: 22,
                 }}
               >
-                ☁️
+                💾
               </div>
             </div>
 
-            {storageLimitMb !== null ? (
+            {storageLimitMb !==
+            null ? (
               <>
                 <div
                   style={{
@@ -554,7 +952,8 @@ export default function SellerProducts() {
                     background:
                       "rgba(100,116,139,.14)",
                     borderRadius: 999,
-                    overflow: "hidden",
+                    overflow:
+                      "hidden",
                     marginTop: 14,
                   }}
                 >
@@ -564,11 +963,15 @@ export default function SellerProducts() {
                       height: "100%",
                       borderRadius: 999,
                       background:
-                        storagePercent >= 90
-                          ? "#ef4444"
-                          : storagePercent >= 80
-                          ? "#f59e0b"
-                          : "linear-gradient(90deg,#06b6d4,#635bff)",
+                        storagePercent >=
+                        90
+                          ? "#dc2626"
+                          : storagePercent >=
+                            80
+                          ? "#d97706"
+                          : "var(--primary, #2563eb)",
+                      transition:
+                        "width .25s ease",
                     }}
                   />
                 </div>
@@ -578,9 +981,8 @@ export default function SellerProducts() {
                     display: "flex",
                     justifyContent:
                       "space-between",
-                    gap: 8,
-                    marginTop: 8,
-                    fontSize: 12,
+                    marginTop: 7,
+                    fontSize: 11,
                   }}
                 >
                   <span
@@ -595,7 +997,9 @@ export default function SellerProducts() {
                           : "var(--muted, #64748b)",
                     }}
                   >
-                    {storageStatus.label}
+                    {
+                      storageStatus.label
+                    }
                   </span>
 
                   <span
@@ -604,7 +1008,9 @@ export default function SellerProducts() {
                         "var(--muted, #64748b)",
                     }}
                   >
-                    {formatStorage(storageLimitMb)}
+                    {formatStorage(
+                      storageLimitMb
+                    )}
                   </span>
                 </div>
               </>
@@ -622,7 +1028,6 @@ export default function SellerProducts() {
             )}
           </div>
 
-          {/* Subscription */}
           <div
             className="card"
             style={{
@@ -633,16 +1038,19 @@ export default function SellerProducts() {
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
+                justifyContent:
+                  "space-between",
                 gap: 10,
-                alignItems: "flex-start",
+                alignItems:
+                  "flex-start",
               }}
             >
               <div>
                 <div
                   style={{
                     fontSize: 13,
-                    color: "var(--muted, #64748b)",
+                    color:
+                      "var(--muted, #64748b)",
                     marginBottom: 6,
                   }}
                 >
@@ -655,8 +1063,10 @@ export default function SellerProducts() {
                     fontWeight: 800,
                   }}
                 >
-                  {usage?.subscription?.plan
-                    .name ?? "بدون اشتراک"}
+                  {usage
+                    ?.subscription?.plan
+                    .name ??
+                    "بدون اشتراک"}
                 </div>
               </div>
 
@@ -682,14 +1092,18 @@ export default function SellerProducts() {
                 <div>
                   شروع:{" "}
                   {fmtDate(
-                    usage.subscription.startDate
+                    usage
+                      .subscription
+                      .startDate
                   )}
                 </div>
 
                 <div>
                   پایان:{" "}
                   {fmtDate(
-                    usage.subscription.endDate
+                    usage
+                      .subscription
+                      .endDate
                   )}
                 </div>
               </div>
@@ -697,7 +1111,8 @@ export default function SellerProducts() {
               <div
                 style={{
                   marginTop: 12,
-                  padding: "9px 11px",
+                  padding:
+                    "9px 11px",
                   borderRadius: 10,
                   background:
                     "rgba(239,68,68,.08)",
@@ -705,14 +1120,12 @@ export default function SellerProducts() {
                   fontSize: 12,
                 }}
               >
-                برای آپلود فایل و استفاده کامل
-                از امکانات، اشتراک فعال لازم است.
+                برای آپلود فایل و استفاده کامل از امکانات، اشتراک فعال لازم است.
               </div>
             )}
           </div>
         </div>
 
-        {/* Warnings */}
         {productLimitReached && (
           <div
             className="alert alert-error"
@@ -721,8 +1134,7 @@ export default function SellerProducts() {
             }}
           >
             ظرفیت محصولات این پلن تکمیل شده است.
-            برای افزودن محصول جدید، ابتدا محصولی
-            حذف کنید یا پلن خود را ارتقا دهید.
+            برای افزودن محصول جدید، ابتدا محصولی حذف کنید یا پلن خود را ارتقا دهید.
           </div>
         )}
 
@@ -735,16 +1147,18 @@ export default function SellerProducts() {
                 marginBottom: 14,
               }}
             >
-              به {productPercent}% ظرفیت محصولات
-              پلن خود رسیده‌اید.
+              به {productPercent}% ظرفیت محصولات پلن خود رسیده‌اید.
             </div>
           )}
 
-        {storageLimitMb !== null &&
-          storagePercent >= 80 && (
+        {storageLimitMb !==
+          null &&
+          storagePercent >=
+            80 && (
             <div
               className={
-                storagePercent >= 90
+                storagePercent >=
+                90
                   ? "alert alert-error"
                   : "alert alert-warning"
               }
@@ -753,17 +1167,17 @@ export default function SellerProducts() {
               }}
             >
               مصرف فضای ذخیره‌سازی شما{" "}
-              {storagePercent}% است. فایل‌های
-              3D و تصاویر فضای بیشتری مصرف می‌کنند.
+              {storagePercent}% است.
+              فایل‌های 3D و تصاویر فضای بیشتری مصرف می‌کنند.
             </div>
           )}
 
-        {/* Filters */}
         <div
           className="tabs"
           style={{
             overflowX: "auto",
-            whiteSpace: "nowrap",
+            whiteSpace:
+              "nowrap",
             marginBottom: 16,
           }}
         >
@@ -779,27 +1193,35 @@ export default function SellerProducts() {
               t === "all"
                 ? products.length
                 : products.filter(
-                    (p) => p.visibility === t
+                    (p) =>
+                      p.visibility ===
+                      t
                   ).length;
 
             return (
               <button
                 key={t}
                 className={
-                  tab === t ? "active" : ""
+                  tab === t
+                    ? "active"
+                    : ""
                 }
-                onClick={() => setTab(t)}
+                onClick={() =>
+                  setTab(t)
+                }
               >
                 {t === "all"
                   ? "همه"
                   : t === "DRAFT"
                   ? "پیش‌نویس"
-                  : t === "PUBLISHED"
+                  : t ===
+                    "PUBLISHED"
                   ? "منتشرشده"
                   : "مخفی"}{" "}
                 <span
                   style={{
-                    opacity: 0.65,
+                    opacity:
+                      0.65,
                     marginRight: 4,
                   }}
                 >
@@ -810,149 +1232,219 @@ export default function SellerProducts() {
           })}
         </div>
 
-        {/* Loading */}
-        {loading ? (
+        {loading ||
+        loadingJobs ? (
           <Spinner />
-        ) : filtered.length === 0 ? (
+        ) : filtered.length ===
+          0 ? (
           <EmptyState
             icon="📦"
             text="محصولی در این بخش نیست."
           />
         ) : isMobile ? (
-          /* Mobile Product Cards */
           <div
             style={{
               display: "grid",
               gap: 12,
             }}
           >
-            {filtered.map((p) => (
-              <div
-                key={p.id}
-                className="card"
-                style={{
-                  padding: 15,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent:
-                      "space-between",
-                    gap: 12,
-                    alignItems: "flex-start",
-                  }}
-                >
+            {filtered.map(
+              (p) => {
+                const job =
+                  getProductJob(
+                    p.id
+                  );
+
+                return (
                   <div
+                    key={p.id}
+                    className="card"
                     style={{
-                      minWidth: 0,
-                      flex: 1,
+                      padding: 15,
                     }}
                   >
                     <div
                       style={{
-                        fontWeight: 800,
-                        fontSize: 15,
-                        lineHeight: 1.7,
-                        wordBreak: "break-word",
+                        display:
+                          "flex",
+                        justifyContent:
+                          "space-between",
+                        gap: 12,
+                        alignItems:
+                          "flex-start",
                       }}
                     >
-                      {p.name}
+                      <div
+                        style={{
+                          minWidth: 0,
+                          flex: 1,
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontWeight:
+                              800,
+                            fontSize:
+                              15,
+                            lineHeight:
+                              1.7,
+                            wordBreak:
+                              "break-word",
+                          }}
+                        >
+                          {p.name}
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop: 5,
+                            fontSize:
+                              12,
+                            color:
+                              "var(--muted, #64748b)",
+                          }}
+                        >
+                          ایجاد شده در{" "}
+                          {fmtDate(
+                            p.createdAt
+                          )}
+                        </div>
+                      </div>
+
+                      <VisibilityBadge
+                        v={
+                          p.visibility
+                        }
+                      />
                     </div>
+
+                    {p.hasUnpublishedChanges && (
+                      <div
+                        style={{
+                          marginTop: 11,
+                        }}
+                      >
+                        <span className="badge badge-warning">
+                          تغییرات منتشرنشده
+                        </span>
+                      </div>
+                    )}
+
+                    <PublishJobState
+                      job={job}
+                    />
 
                     <div
                       style={{
-                        marginTop: 5,
-                        fontSize: 12,
-                        color:
-                          "var(--muted, #64748b)",
+                        marginTop: 14,
+                        paddingTop:
+                          12,
+                        borderTop:
+                          "1px solid rgba(148,163,184,.18)",
                       }}
                     >
-                      ایجاد شده در{" "}
-                      {fmtDate(p.createdAt)}
+                      {renderProductActions(
+                        p
+                      )}
                     </div>
                   </div>
-
-                  <VisibilityBadge
-                    v={p.visibility}
-                  />
-                </div>
-
-                {p.hasUnpublishedChanges && (
-                  <div
-                    style={{
-                      marginTop: 11,
-                    }}
-                  >
-                    <span className="badge badge-warning">
-                      تغییرات منتشرنشده
-                    </span>
-                  </div>
-                )}
-
-                <div
-                  style={{
-                    marginTop: 14,
-                    paddingTop: 12,
-                    borderTop:
-                      "1px solid rgba(148,163,184,.18)",
-                  }}
-                >
-                  {renderProductActions(p)}
-                </div>
-              </div>
-            ))}
+                );
+              }
+            )}
           </div>
         ) : (
-          /* Desktop Table */
           <div className="card table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>محصول</th>
-                  <th>وضعیت</th>
-                  <th>تاریخ ایجاد</th>
-                  <th>عملیات</th>
+                  <th>
+                    محصول
+                  </th>
+                  <th>
+                    وضعیت
+                  </th>
+                  <th>
+                    انتشار
+                  </th>
+                  <th>
+                    تاریخ ایجاد
+                  </th>
+                  <th>
+                    عملیات
+                  </th>
                 </tr>
               </thead>
 
               <tbody>
-                {filtered.map((p) => (
-                  <tr key={p.id}>
-                    <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          flexWrap: "wrap",
-                        }}
+                {filtered.map(
+                  (p) => {
+                    const job =
+                      getProductJob(
+                        p.id
+                      );
+
+                    return (
+                      <tr
+                        key={p.id}
                       >
-                        <span>{p.name}</span>
+                        <td>
+                          <div
+                            style={{
+                              display:
+                                "flex",
+                              alignItems:
+                                "center",
+                              gap: 8,
+                              flexWrap:
+                                "wrap",
+                            }}
+                          >
+                            <span>
+                              {p.name}
+                            </span>
 
-                        {p.hasUnpublishedChanges && (
-                          <span className="badge badge-warning">
-                            تغییرات منتشرنشده
-                          </span>
-                        )}
-                      </div>
-                    </td>
+                            {p.hasUnpublishedChanges && (
+                              <span className="badge badge-warning">
+                                تغییرات منتشرنشده
+                              </span>
+                            )}
+                          </div>
+                        </td>
 
-                    <td>
-                      <VisibilityBadge
-                        v={p.visibility}
-                      />
-                    </td>
+                        <td>
+                          <VisibilityBadge
+                            v={
+                              p.visibility
+                            }
+                          />
+                        </td>
 
-                    <td>
-                      {fmtDate(p.createdAt)}
-                    </td>
+                        <td
+                          style={{
+                            minWidth:
+                              190,
+                          }}
+                        >
+                          <PublishJobState
+                            job={job}
+                          />
+                        </td>
 
-                    <td>
-                      {renderProductActions(p)}
-                    </td>
-                  </tr>
-                ))}
+                        <td>
+                          {fmtDate(
+                            p.createdAt
+                          )}
+                        </td>
+
+                        <td>
+                          {renderProductActions(
+                            p
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  }
+                )}
               </tbody>
             </table>
           </div>
