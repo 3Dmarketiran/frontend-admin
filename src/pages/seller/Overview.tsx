@@ -321,8 +321,7 @@ export default function SellerOverview() {
                   }}
                 >
                   سلام{" "}
-                  {user?.seller?.storename ||
-                    "فروشنده"} 👋
+                  {{user?.seller?.storeName || "فروشنده"} 👋
                 </h2>
 
                 <p
