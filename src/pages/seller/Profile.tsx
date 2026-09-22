@@ -129,6 +129,7 @@ export default function SellerProfile() {
           logoUrl: seller.logoUrl || undefined,
           contactEmail: seller.contactEmail || undefined,
           contactPhone: seller.contactPhone || undefined,
+          address: seller.address || undefined,
         }
       );
 
@@ -429,6 +430,21 @@ export default function SellerProfile() {
                 }
               />
             </div>
+          </div>
+
+          <div className="form-group">
+            <label>آدرس فروشگاه</label>
+
+            <input
+              value={seller.address ?? ""}
+              placeholder="مثلاً: تهران، خیابان ..."
+              onChange={(e) =>
+                setSeller({
+                  ...seller,
+                  address: e.target.value,
+                })
+              }
+            />
           </div>
 
           <div
