@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import AdminOverview from "./pages/admin/Overview";
 import AdminSellers from "./pages/admin/Sellers";
 import AdminProducts from "./pages/admin/Products";
+import AdminCategories from "./pages/admin/Categories";
 import AdminSubscriptions from "./pages/admin/Subscriptions";
 import AdminPlans from "./pages/admin/Plans";
 import AdminPublishing from "./pages/admin/Publishing";
@@ -37,7 +38,11 @@ export default function App() {
               <Route index element={<AdminOverview />} />
               <Route path="sellers" element={<AdminSellers />} />
               <Route path="products" element={<AdminProducts />} />
-              <Route path="subscriptions" element={<AdminSubscriptions />} />
+              <Route path="categories" element={<AdminCategories />} />
+              <Route
+                path="subscriptions"
+                element={<AdminSubscriptions />}
+              />
               <Route path="plans" element={<AdminPlans />} />
               <Route path="publishing" element={<AdminPublishing />} />
               <Route path="analytics" element={<AdminAnalytics />} />
@@ -51,9 +56,15 @@ export default function App() {
               <Route index element={<SellerOverview />} />
               <Route path="products" element={<SellerProducts />} />
               <Route path="products/new" element={<ProductWizard />} />
-              <Route path="products/:id/edit" element={<ProductWizard />} />
+              <Route
+                path="products/:id/edit"
+                element={<ProductWizard />}
+              />
               <Route path="analytics" element={<SellerAnalytics />} />
-              <Route path="subscription" element={<SellerSubscription />} />
+              <Route
+                path="subscription"
+                element={<SellerSubscription />}
+              />
               <Route path="profile" element={<SellerProfile />} />
             </Route>
 
