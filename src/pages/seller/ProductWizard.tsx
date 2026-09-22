@@ -1097,4 +1097,485 @@ function ModelStep({
           ? "فایل ZIP با موفقیت پردازش شد."
           : "فایل سه‌بعدی با موفقیت آپلود شد.",
         "success"
-     
+      );
+    } catch (err) {
+      push(
+        err instanceof ApiError
+          ? err.message
+          : "خطا در آپلود فایل سه‌بعدی.",
+        "error"
+      );
+    } finally {
+      setUploading(false);
+      setProgress(0);
+      setCurrentFile("");
+    }
+  }
+
+  async function remove(
+    modelId: string
+  ) {
+    try {
+      await api.delete(
+        `/api/products/${productId}/models/${modelId}`
+      );
+
+      await onRefetch();
+    } catch (err) {
+      push(
+        err instanceof ApiError
+          ? err.message
+          : "حذف مدل ناموفق بود.",
+        "error"
+      );
+    }
+  }
+
+  return (
+    <div>
+      <p
+        className="form-help"
+        style={{
+          marginBottom: 10,
+        }}
+      >
+        {kind === "3D"
+          ? "فایل GLB، GLTF یا ZIP شامل مدل‌های سه‌بعدی را آپلود کنید."
+          : "فایل USDZ یا ZIP شامل فایل‌های USDZ را برای واقعیت افزوده iOS آپلود کنید."}
+      </p>
+
+      <label
+        className={`dropzone ${
+          dragging ? "dragging" : ""
+        }`}
+        onDragOver={(e) => {
+          e.preventDefault();
+
+          if (!uploading) {
+            setDragging(true);
+          }
+        }}
+        onDragLeave={() =>
+          setDragging(false)
+        }
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+
+          if (!uploading) {
+            void onFile(
+              e.dataTransfer.files
+            );
+          }
+        }}
+      >
+        {uploading
+          ? `در حال آپلود ${currentFile}`
+          : `برای انتخاب فایل ${kind === "3D" ? "GLB / GLTF / ZIP" : "USDZ / ZIP"} کلیک کنید`}
+
+        <small
+          style={{
+            display: "block",
+            marginTop: 6,
+            opacity: 0.7,
+          }}
+        >
+          فایل مدل حداکثر 100MB و ZIP حداکثر
+          150MB
+        </small>
+
+        <input
+          type="file"
+          accept={accept}
+          hidden
+          disabled={uploading}
+          onChange={(e) => {
+            if (e.target.files) {
+              void onFile(
+                e.target.files
+              );
+            }
+
+            e.currentTarget.value = "";
+          }}
+        />
+      </label>
+
+      {uploading && (
+        <UploadProgress
+          progress={progress}
+          filename={currentFile}
+        />
+      )}
+
+      {models.length > 0 && (
+        <ul
+          style={{
+            marginTop: 14,
+            paddingRight: 18,
+          }}
+        >
+          {models.map((m) => (
+            <li
+              key={m.id}
+              style={{
+                marginBottom: 6,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <span className="badge badge-info">
+                {m.kind}
+              </span>
+
+              <a
+                href={m.url}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  color:
+                    "var(--color-primary)",
+                }}
+              >
+                مشاهده فایل
+              </a>
+
+              <button
+                className="btn btn-sm btn-danger"
+                disabled={uploading}
+                onClick={() =>
+                  remove(m.id)
+                }
+              >
+                حذف
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          marginTop: 16,
+        }}
+      >
+        <button
+          className="btn btn-outline"
+          disabled={uploading}
+          onClick={onBack}
+        >
+          قبلی
+        </button>
+
+        <button
+          className="btn btn-primary"
+          disabled={uploading}
+          onClick={onNext}
+        >
+          بعدی
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Upload progress
+// ---------------------------------------------------------------------
+
+function UploadProgress({
+  progress,
+  filename,
+}: {
+  progress: number;
+  filename: string;
+}) {
+  return (
+    <div
+      style={{
+        marginTop: 14,
+        padding: 12,
+        borderRadius: 12,
+        background:
+          "var(--color-surface, #f8fafc)",
+        border:
+          "1px solid var(--color-border, #e2e8f0)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent:
+            "space-between",
+          gap: 12,
+          marginBottom: 8,
+          fontSize: 13,
+        }}
+      >
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {filename}
+        </span>
+
+        <strong>
+          {Math.round(progress)}%
+        </strong>
+      </div>
+
+      <div
+        style={{
+          height: 8,
+          borderRadius: 999,
+          background:
+            "var(--color-border, #e2e8f0)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            width: `${Math.min(
+              100,
+              Math.max(0, progress)
+            )}%`,
+            height: "100%",
+            borderRadius: 999,
+            background:
+              "var(--color-primary, #2563eb)",
+            transition:
+              "width 120ms linear",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// XMLHttpRequest upload with real progress
+// ---------------------------------------------------------------------
+
+function uploadWithProgress<T = unknown>(
+  path: string,
+  formData: FormData,
+  onProgress: (
+    progress: number
+  ) => void
+): Promise<T> {
+  return new Promise(
+    (resolve, reject) => {
+      const xhr =
+        new XMLHttpRequest();
+
+      xhr.open(
+        "POST",
+        `${API_URL}${path}`
+      );
+
+      xhr.withCredentials = true;
+
+      const sessionId =
+        getStoredSessionId();
+
+      if (sessionId) {
+        xhr.setRequestHeader(
+          "Authorization",
+          `Bearer ${sessionId}`
+        );
+      }
+
+      xhr.upload.onprogress = (
+        event
+      ) => {
+        if (!event.lengthComputable) {
+          return;
+        }
+
+        onProgress(
+          (event.loaded /
+            event.total) *
+            100
+        );
+      };
+
+      xhr.onload = () => {
+        const contentType =
+          xhr.getResponseHeader(
+            "content-type"
+          ) || "";
+
+        let data: unknown = null;
+
+        if (
+          contentType.includes(
+            "application/json"
+          )
+        ) {
+          try {
+            data =
+              JSON.parse(
+                xhr.responseText
+              );
+          } catch {
+            data = null;
+          }
+        }
+
+        if (
+          xhr.status >= 200 &&
+          xhr.status < 300
+        ) {
+          onProgress(100);
+          resolve(data as T);
+          return;
+        }
+
+        const message =
+          typeof data === "object" &&
+          data !== null
+            ? (
+                data as {
+                  error?: string;
+                  message?: string;
+                }
+              ).error ||
+              (
+                data as {
+                  error?: string;
+                  message?: string;
+                }
+              ).message
+            : undefined;
+
+        reject(
+          new ApiError(
+            xhr.status,
+            message ||
+              `خطای غیرمنتظره (${xhr.status})`
+          )
+        );
+      };
+
+      xhr.onerror = () => {
+        reject(
+          new ApiError(
+            0,
+            "ارتباط با سرور هنگام آپلود فایل قطع شد."
+          )
+        );
+      };
+
+      xhr.onabort = () => {
+        reject(
+          new ApiError(
+            0,
+            "آپلود فایل لغو شد."
+          )
+        );
+      };
+
+      xhr.send(formData);
+    }
+  );
+}
+
+// ---------------------------------------------------------------------
+// Preview
+// ---------------------------------------------------------------------
+
+function PreviewCard({
+  product,
+  name,
+  shortDescription,
+}: {
+  product: Product;
+  name: string;
+  shortDescription: string;
+}) {
+  const glb =
+    product.models.find(
+      (m) =>
+        m.kind === "GLB" ||
+        m.kind === "GLTF"
+    );
+
+  const primaryImage =
+    product.images.find(
+      (i) => i.isPrimary
+    ) ?? product.images[0];
+
+  return (
+    <div
+      style={{
+        border:
+          "1px solid var(--color-border)",
+        borderRadius: 14,
+        overflow: "hidden",
+      }}
+    >
+      {glb ? (
+        <model-viewer
+          src={glb.url}
+          alt={name}
+          camera-controls
+          auto-rotate
+          style={{
+            width: "100%",
+            aspectRatio: "1/1",
+            background: "#F8FAFC",
+          }}
+        />
+      ) : primaryImage ? (
+        <img
+          src={primaryImage.url}
+          alt={name}
+          style={{
+            width: "100%",
+            aspectRatio: "1/1",
+            objectFit: "cover",
+          }}
+        />
+      ) : (
+        <div
+          className="skeleton"
+          style={{
+            width: "100%",
+            aspectRatio: "1/1",
+          }}
+        />
+      )}
+
+      <div style={{ padding: 14 }}>
+        <div
+          style={{
+            fontWeight: 800,
+            fontSize: "1.1rem",
+          }}
+        >
+          {name || product.name}
+        </div>
+
+        {shortDescription && (
+          <div
+            style={{
+              color:
+                "var(--color-text-muted)",
+              fontSize: ".88rem",
+              marginTop: 4,
+            }}
+          >
+            {shortDescription}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
