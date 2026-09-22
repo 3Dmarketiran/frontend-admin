@@ -58,7 +58,13 @@ export default function ProductWizard() {
       .get<{ categories: Category[] }>(
         "/api/categories"
       )
-      .then((r) => setCategories(r.categories))
+      .then((r) => {
+        const activeCategories = r.categories.filter(
+          (category) => category.isActive !== false
+        );
+
+        setCategories(activeCategories);
+      })
       .catch(() => {
         push(
           "دریافت دسته‌بندی‌ها ناموفق بود.",
@@ -290,6 +296,19 @@ export default function ProductWizard() {
     }
   }
 
+  const currentCategory =
+    product?.category &&
+    product.categoryId &&
+    product.categoryId === categoryId
+      ? product.category
+      : null;
+
+  const currentCategoryIsInactive =
+    Boolean(
+      currentCategory &&
+        currentCategory.isActive === false
+    );
+
   if (loading) {
     return (
       <>
@@ -390,6 +409,17 @@ export default function ProductWizard() {
                       بدون دسته‌بندی
                     </option>
 
+                    {currentCategoryIsInactive && (
+                      <option
+                        value={currentCategory?.id}
+                        disabled
+                      >
+                        {currentCategory?.name ??
+                          "دسته‌بندی فعلی"}{" "}
+                        — غیرفعال
+                      </option>
+                    )}
+
                     {categories.map((c) => (
                       <option
                         key={c.id}
@@ -399,6 +429,23 @@ export default function ProductWizard() {
                       </option>
                     ))}
                   </select>
+
+                  {currentCategoryIsInactive && (
+                    <div
+                      className="form-help"
+                      style={{
+                        marginTop: 6,
+                        color:
+                          "var(--color-warning, #b45309)",
+                      }}
+                    >
+                      دسته‌بندی فعلی این محصول
+                      غیرفعال شده است و قابل انتخاب
+                      برای محصولات جدید نیست. برای
+                      تغییر آن، یک دسته‌بندی فعال
+                      انتخاب کنید.
+                    </div>
+                  )}
                 </div>
 
                 <div className="form-group">
