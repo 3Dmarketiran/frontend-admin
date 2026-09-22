@@ -34,8 +34,8 @@ interface Usage {
   subscription: {
     id: string;
     status: string;
-    startDate: string;
-    endDate: string;
+    startDate: string | null;
+    endDate: string | null;
     plan: {
       id: string;
       name: string;
@@ -58,8 +58,8 @@ function formatPrice(price: number) {
   return new Intl.NumberFormat("fa-IR").format(price);
 }
 
-function formatStorage(mb: number | null) {
-  if (mb === null) {
+function formatStorage(mb: number | null | undefined) {
+  if (mb === null || mb === undefined) {
     return "نامحدود";
   }
 
@@ -83,10 +83,30 @@ function formatStorage(mb: number | null) {
   return `${(mb / 1024).toFixed(2)} GB`;
 }
 
-function getDaysRemaining(endDate: string) {
-  const end = new Date(endDate).getTime();
-  const now = Date.now();
+function safeFmtDate(
+  value: string | null | undefined
+) {
+  if (!value) {
+    return "—";
+  }
 
+  return fmtDate(value);
+}
+
+function getDaysRemaining(
+  endDate: string | null | undefined
+) {
+  if (!endDate) {
+    return 0;
+  }
+
+  const end = new Date(endDate).getTime();
+
+  if (Number.isNaN(end)) {
+    return 0;
+  }
+
+  const now = Date.now();
   const diff = end - now;
 
   if (diff <= 0) {
@@ -125,7 +145,7 @@ function getDurationLabel(days: number) {
 
 function getPlanBadge(
   plan: Plan,
-  activePlanId?: string
+  activePlanId?: string | null
 ) {
   if (
     activePlanId &&
@@ -170,7 +190,7 @@ export default function SellerSubscription() {
   const { user } = useAuth();
   const { push } = useToast();
 
-  const sellerId = user!.seller!.id;
+  const sellerId = user?.seller?.id;
 
   const [subs, setSubs] =
     useState<Subscription[]>([]);
@@ -220,6 +240,11 @@ export default function SellerSubscription() {
   }, []);
 
   useEffect(() => {
+    if (!sellerId) {
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
     setLoading(true);
@@ -286,38 +311,34 @@ export default function SellerSubscription() {
   }, [sellerId, push]);
 
   /*
-   * We deliberately normalize the active plan here.
+   * Active subscription.
    *
-   * The Subscription type in the existing project
-   * allows plan to be undefined, while the usage API
-   * always returns the plan for an active subscription.
-   *
-   * This keeps the rest of this page completely type-safe.
+   * The usage endpoint is the primary source because
+   * it always returns the active plan together with
+   * its limits.
    */
   const activeSubscription =
-    usage?.subscription ??
+    usage?.subscription ?? null;
+
+  /*
+   * Fallback active subscription from history.
+   *
+   * This is only used if the usage endpoint does
+   * not return an active subscription.
+   */
+  const historyActiveSubscription =
     subs.find(
       (subscription) =>
         subscription.status === "ACTIVE"
-    ) ??
-    null;
+    ) ?? null;
 
+  /*
+   * Normalize the active plan so the rest of the
+   * component never accesses an optional plan
+   * without checking it first.
+   */
   const activePlan: ActivePlan | null =
-    usage?.subscription?.plan
-      ? {
-          id: usage.subscription.plan.id,
-          name: usage.subscription.plan.name,
-          durationDays:
-            usage.subscription.plan
-              .durationDays,
-          productLimit:
-            usage.subscription.plan
-              .productLimit,
-          storageLimitMb:
-            usage.subscription.plan
-              .storageLimitMb,
-        }
-      : activeSubscription?.plan
+    activeSubscription?.plan
       ? {
           id: activeSubscription.plan.id,
           name: activeSubscription.plan.name,
@@ -326,17 +347,56 @@ export default function SellerSubscription() {
               .durationDays,
           productLimit:
             activeSubscription.plan
-              .productLimit ?? null,
+              .productLimit,
           storageLimitMb:
             activeSubscription.plan
-              .storageLimitMb ?? null,
+              .storageLimitMb,
+        }
+      : historyActiveSubscription?.plan
+      ? {
+          id:
+            historyActiveSubscription
+              .plan.id,
+          name:
+            historyActiveSubscription
+              .plan.name,
+          durationDays:
+            historyActiveSubscription
+              .plan.durationDays,
+          productLimit:
+            historyActiveSubscription
+              .plan.productLimit ?? null,
+          storageLimitMb:
+            historyActiveSubscription
+              .plan.storageLimitMb ?? null,
         }
       : null;
 
+  /*
+   * Use the usage endpoint as the main active
+   * subscription. If unavailable, fall back to
+   * the active history record.
+   */
+  const currentSubscription =
+    activeSubscription ??
+    (historyActiveSubscription
+      ? {
+          id: historyActiveSubscription.id,
+          status:
+            historyActiveSubscription.status,
+          startDate:
+            historyActiveSubscription.startDate ??
+            null,
+          endDate:
+            historyActiveSubscription.endDate ??
+            null,
+        }
+      : null);
+
   const daysRemaining =
-    activeSubscription
+    currentSubscription
       ? getDaysRemaining(
-          activeSubscription.endDate
+          currentSubscription.endDate
         )
       : 0;
 
@@ -383,7 +443,7 @@ export default function SellerSubscription() {
       : 0;
 
   const hasActiveSubscription =
-    activeSubscription !== null &&
+    currentSubscription !== null &&
     activePlan !== null;
 
   return (
@@ -395,9 +455,9 @@ export default function SellerSubscription() {
           <Spinner />
         ) : (
           <>
-            {/* -------------------------------------------------- */}
+            {/* ================================================== */}
             {/* Current Subscription */}
-            {/* -------------------------------------------------- */}
+            {/* ================================================== */}
 
             {hasActiveSubscription ? (
               <div
@@ -535,7 +595,9 @@ export default function SellerSubscription() {
                         }}
                       >
                         {productCount}
-                        {productLimit !== null
+
+                        {productLimit !==
+                          null
                           ? ` / ${productLimit}`
                           : ""}
                       </strong>
@@ -600,14 +662,15 @@ export default function SellerSubscription() {
                           fontSize: 14,
                         }}
                       >
-                        {fmtDate(
-                          activeSubscription.endDate
+                        {safeFmtDate(
+                          currentSubscription.endDate
                         )}
                       </strong>
                     </div>
                   </div>
 
                   {/* Usage bars */}
+
                   <div
                     style={{
                       display: "grid",
@@ -619,7 +682,8 @@ export default function SellerSubscription() {
                       marginTop: 16,
                     }}
                   >
-                    {productLimit !== null && (
+                    {productLimit !==
+                      null && (
                       <div>
                         <div
                           style={{
@@ -672,7 +736,8 @@ export default function SellerSubscription() {
                       </div>
                     )}
 
-                    {storageLimit !== null && (
+                    {storageLimit !==
+                      null && (
                       <div>
                         <div
                           style={{
@@ -753,9 +818,9 @@ export default function SellerSubscription() {
               </div>
             )}
 
-            {/* -------------------------------------------------- */}
+            {/* ================================================== */}
             {/* Plans */}
-            {/* -------------------------------------------------- */}
+            {/* ================================================== */}
 
             <div
               className="section-head"
@@ -997,7 +1062,9 @@ export default function SellerSubscription() {
                             isCurrent
                           }
                           onClick={() => {
-                            if (!isCurrent) {
+                            if (
+                              !isCurrent
+                            ) {
                               push(
                                 "برای فعال‌سازی این پلن، با پشتیبانی پلتفرم تماس بگیرید.",
                                 "info"
@@ -1016,9 +1083,9 @@ export default function SellerSubscription() {
               </div>
             )}
 
-            {/* -------------------------------------------------- */}
-            {/* Payment notice */}
-            {/* -------------------------------------------------- */}
+            {/* ================================================== */}
+            {/* Payment Notice */}
+            {/* ================================================== */}
 
             <div
               className="card"
@@ -1089,9 +1156,9 @@ export default function SellerSubscription() {
               </div>
             </div>
 
-            {/* -------------------------------------------------- */}
-            {/* Subscription history */}
-            {/* -------------------------------------------------- */}
+            {/* ================================================== */}
+            {/* Subscription History */}
+            {/* ================================================== */}
 
             <div
               className="section-head"
@@ -1167,7 +1234,9 @@ export default function SellerSubscription() {
                       </div>
 
                       <SubStatusBadge
-                        v={subscription.status}
+                        v={
+                          subscription.status
+                        }
                       />
                     </div>
 
@@ -1197,7 +1266,7 @@ export default function SellerSubscription() {
                             fontSize: 12,
                           }}
                         >
-                          {fmtDate(
+                          {safeFmtDate(
                             subscription.startDate
                           )}
                         </strong>
@@ -1216,7 +1285,7 @@ export default function SellerSubscription() {
                             fontSize: 12,
                           }}
                         >
-                          {fmtDate(
+                          {safeFmtDate(
                             subscription.endDate
                           )}
                         </strong>
@@ -1262,13 +1331,13 @@ export default function SellerSubscription() {
                         </td>
 
                         <td>
-                          {fmtDate(
+                          {safeFmtDate(
                             subscription.startDate
                           )}
                         </td>
 
                         <td>
-                          {fmtDate(
+                          {safeFmtDate(
                             subscription.endDate
                           )}
                         </td>
