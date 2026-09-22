@@ -46,6 +46,14 @@ interface Usage {
   } | null;
 }
 
+interface ActivePlan {
+  id: string;
+  name: string;
+  durationDays: number;
+  productLimit: number | null;
+  storageLimitMb: number | null;
+}
+
 function formatPrice(price: number) {
   return new Intl.NumberFormat("fa-IR").format(price);
 }
@@ -53,6 +61,10 @@ function formatPrice(price: number) {
 function formatStorage(mb: number | null) {
   if (mb === null) {
     return "نامحدود";
+  }
+
+  if (mb <= 0) {
+    return "0 MB";
   }
 
   if (mb < 1) {
@@ -87,16 +99,24 @@ function getDaysRemaining(endDate: string) {
 }
 
 function getDurationLabel(days: number) {
-  if (days === 30) return "۱ ماهه";
-  if (days === 90) return "۳ ماهه";
-  if (days === 180) return "۶ ماهه";
-  if (days === 365) return "۱ ساله";
+  if (days === 30) {
+    return "۱ ماهه";
+  }
 
-  if (days >= 365) {
-    const years = Math.round(
-      days / 365
-    );
+  if (days === 90) {
+    return "۳ ماهه";
+  }
 
+  if (days === 180) {
+    return "۶ ماهه";
+  }
+
+  if (days === 365) {
+    return "۱ ساله";
+  }
+
+  if (days > 365) {
+    const years = Math.round(days / 365);
     return `${years} ساله`;
   }
 
@@ -107,7 +127,10 @@ function getPlanBadge(
   plan: Plan,
   activePlanId?: string
 ) {
-  if (plan.id === activePlanId) {
+  if (
+    activePlanId &&
+    plan.id === activePlanId
+  ) {
     return "پلن فعلی";
   }
 
@@ -197,6 +220,8 @@ export default function SellerSubscription() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     setLoading(true);
 
     Promise.all([
@@ -220,6 +245,10 @@ export default function SellerSubscription() {
           plansResponse,
           usageResponse,
         ]) => {
+          if (cancelled) {
+            return;
+          }
+
           setSubs(
             subscriptionsResponse.subscriptions
           );
@@ -234,6 +263,10 @@ export default function SellerSubscription() {
         }
       )
       .catch((err) => {
+        if (cancelled) {
+          return;
+        }
+
         push(
           err instanceof ApiError
             ? err.message
@@ -242,28 +275,77 @@ export default function SellerSubscription() {
         );
       })
       .finally(() => {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       });
-  }, [sellerId]);
 
-  const active =
+    return () => {
+      cancelled = true;
+    };
+  }, [sellerId, push]);
+
+  /*
+   * We deliberately normalize the active plan here.
+   *
+   * The Subscription type in the existing project
+   * allows plan to be undefined, while the usage API
+   * always returns the plan for an active subscription.
+   *
+   * This keeps the rest of this page completely type-safe.
+   */
+  const activeSubscription =
     usage?.subscription ??
     subs.find(
-      (s) => s.status === "ACTIVE"
-    );
+      (subscription) =>
+        subscription.status === "ACTIVE"
+    ) ??
+    null;
 
-  const daysRemaining = active
-    ? getDaysRemaining(
-        active.endDate
-      )
-    : 0;
+  const activePlan: ActivePlan | null =
+    usage?.subscription?.plan
+      ? {
+          id: usage.subscription.plan.id,
+          name: usage.subscription.plan.name,
+          durationDays:
+            usage.subscription.plan
+              .durationDays,
+          productLimit:
+            usage.subscription.plan
+              .productLimit,
+          storageLimitMb:
+            usage.subscription.plan
+              .storageLimitMb,
+        }
+      : activeSubscription?.plan
+      ? {
+          id: activeSubscription.plan.id,
+          name: activeSubscription.plan.name,
+          durationDays:
+            activeSubscription.plan
+              .durationDays,
+          productLimit:
+            activeSubscription.plan
+              .productLimit ?? null,
+          storageLimitMb:
+            activeSubscription.plan
+              .storageLimitMb ?? null,
+        }
+      : null;
+
+  const daysRemaining =
+    activeSubscription
+      ? getDaysRemaining(
+          activeSubscription.endDate
+        )
+      : 0;
 
   const productCount =
     usage?.productCount ?? 0;
 
   const productLimit =
     usage?.productLimit ??
-    active?.plan.productLimit ??
+    activePlan?.productLimit ??
     null;
 
   const storageUsed =
@@ -271,11 +353,11 @@ export default function SellerSubscription() {
 
   const storageLimit =
     usage?.storageLimitMb ??
-    active?.plan.storageLimitMb ??
+    activePlan?.storageLimitMb ??
     null;
 
   const productPercent =
-    productLimit &&
+    productLimit !== null &&
     productLimit > 0
       ? Math.min(
           100,
@@ -288,7 +370,7 @@ export default function SellerSubscription() {
       : 0;
 
   const storagePercent =
-    storageLimit &&
+    storageLimit !== null &&
     storageLimit > 0
       ? Math.min(
           100,
@@ -300,6 +382,10 @@ export default function SellerSubscription() {
         )
       : 0;
 
+  const hasActiveSubscription =
+    activeSubscription !== null &&
+    activePlan !== null;
+
   return (
     <>
       <PageHeader title="اشتراک من" />
@@ -309,8 +395,11 @@ export default function SellerSubscription() {
           <Spinner />
         ) : (
           <>
+            {/* -------------------------------------------------- */}
             {/* Current Subscription */}
-            {active ? (
+            {/* -------------------------------------------------- */}
+
+            {hasActiveSubscription ? (
               <div
                 className="card"
                 style={{
@@ -369,8 +458,7 @@ export default function SellerSubscription() {
                               : 27,
                         }}
                       >
-                        {active.plan
-                          .name}
+                        {activePlan.name}
                       </h2>
 
                       <div
@@ -381,10 +469,7 @@ export default function SellerSubscription() {
                           fontSize: 13,
                         }}
                       >
-                        {
-                          active.plan
-                            .durationDays
-                        }{" "}
+                        {activePlan.durationDays}{" "}
                         روز اعتبار
                       </div>
                     </div>
@@ -450,8 +535,7 @@ export default function SellerSubscription() {
                         }}
                       >
                         {productCount}
-                        {productLimit !==
-                        null
+                        {productLimit !== null
                           ? ` / ${productLimit}`
                           : ""}
                       </strong>
@@ -517,7 +601,7 @@ export default function SellerSubscription() {
                         }}
                       >
                         {fmtDate(
-                          active.endDate
+                          activeSubscription.endDate
                         )}
                       </strong>
                     </div>
@@ -535,8 +619,7 @@ export default function SellerSubscription() {
                       marginTop: 16,
                     }}
                   >
-                    {productLimit !==
-                      null && (
+                    {productLimit !== null && (
                       <div>
                         <div
                           style={{
@@ -553,10 +636,7 @@ export default function SellerSubscription() {
                           </span>
 
                           <span>
-                            {
-                              productPercent
-                            }
-                            ٪
+                            {productPercent}٪
                           </span>
                         </div>
 
@@ -592,8 +672,7 @@ export default function SellerSubscription() {
                       </div>
                     )}
 
-                    {storageLimit !==
-                      null && (
+                    {storageLimit !== null && (
                       <div>
                         <div
                           style={{
@@ -610,10 +689,7 @@ export default function SellerSubscription() {
                           </span>
 
                           <span>
-                            {
-                              storagePercent
-                            }
-                            ٪
+                            {storagePercent}٪
                           </span>
                         </div>
 
@@ -677,7 +753,10 @@ export default function SellerSubscription() {
               </div>
             )}
 
+            {/* -------------------------------------------------- */}
             {/* Plans */}
+            {/* -------------------------------------------------- */}
+
             <div
               className="section-head"
               style={{
@@ -716,11 +795,11 @@ export default function SellerSubscription() {
                   const badge =
                     getPlanBadge(
                       plan,
-                      active?.plan.id
+                      activePlan?.id
                     );
 
                   const isCurrent =
-                    active?.plan.id ===
+                    activePlan?.id ===
                     plan.id;
 
                   return (
@@ -908,6 +987,7 @@ export default function SellerSubscription() {
                         }}
                       >
                         <button
+                          type="button"
                           className={
                             isCurrent
                               ? "btn btn-outline btn-block"
@@ -917,10 +997,12 @@ export default function SellerSubscription() {
                             isCurrent
                           }
                           onClick={() => {
-                            push(
-                              "برای فعال‌سازی این پلن، با پشتیبانی پلتفرم تماس بگیرید.",
-                              "info"
-                            );
+                            if (!isCurrent) {
+                              push(
+                                "برای فعال‌سازی این پلن، با پشتیبانی پلتفرم تماس بگیرید.",
+                                "info"
+                              );
+                            }
                           }}
                         >
                           {isCurrent
@@ -934,7 +1016,10 @@ export default function SellerSubscription() {
               </div>
             )}
 
-            {/* No online payment notice */}
+            {/* -------------------------------------------------- */}
+            {/* Payment notice */}
+            {/* -------------------------------------------------- */}
+
             <div
               className="card"
               style={{
@@ -1004,7 +1089,10 @@ export default function SellerSubscription() {
               </div>
             </div>
 
-            {/* History */}
+            {/* -------------------------------------------------- */}
+            {/* Subscription history */}
+            {/* -------------------------------------------------- */}
+
             <div
               className="section-head"
               style={{
@@ -1035,9 +1123,9 @@ export default function SellerSubscription() {
                   marginBottom: 20,
                 }}
               >
-                {subs.map((s) => (
+                {subs.map((subscription) => (
                   <div
-                    key={s.id}
+                    key={subscription.id}
                     className="card"
                     style={{
                       padding: 16,
@@ -1060,7 +1148,8 @@ export default function SellerSubscription() {
                             fontSize: 15,
                           }}
                         >
-                          {s.plan?.name ||
+                          {subscription.plan
+                            ?.name ??
                             "پلن"}
                         </strong>
 
@@ -1071,16 +1160,14 @@ export default function SellerSubscription() {
                             fontSize: 11,
                           }}
                         >
-                          {
-                            getHistoryStatusLabel(
-                              s.status
-                            )
-                          }
+                          {getHistoryStatusLabel(
+                            subscription.status
+                          )}
                         </div>
                       </div>
 
                       <SubStatusBadge
-                        v={s.status}
+                        v={subscription.status}
                       />
                     </div>
 
@@ -1111,7 +1198,7 @@ export default function SellerSubscription() {
                           }}
                         >
                           {fmtDate(
-                            s.startDate
+                            subscription.startDate
                           )}
                         </strong>
                       </div>
@@ -1130,7 +1217,7 @@ export default function SellerSubscription() {
                           }}
                         >
                           {fmtDate(
-                            s.endDate
+                            subscription.endDate
                           )}
                         </strong>
                       </div>
@@ -1148,43 +1235,41 @@ export default function SellerSubscription() {
                 <table>
                   <thead>
                     <tr>
-                      <th>
-                        پلن
-                      </th>
-                      <th>
-                        وضعیت
-                      </th>
-                      <th>
-                        شروع
-                      </th>
-                      <th>
-                        پایان
-                      </th>
+                      <th>پلن</th>
+                      <th>وضعیت</th>
+                      <th>شروع</th>
+                      <th>پایان</th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    {subs.map((s) => (
-                      <tr key={s.id}>
+                    {subs.map((subscription) => (
+                      <tr
+                        key={subscription.id}
+                      >
                         <td>
-                          {s.plan?.name}
+                          {subscription.plan
+                            ?.name ??
+                            "پلن"}
                         </td>
 
                         <td>
                           <SubStatusBadge
-                            v={s.status}
+                            v={
+                              subscription.status
+                            }
                           />
                         </td>
 
                         <td>
                           {fmtDate(
-                            s.startDate
+                            subscription.startDate
                           )}
                         </td>
 
                         <td>
                           {fmtDate(
-                            s.endDate
+                            subscription.endDate
                           )}
                         </td>
                       </tr>
