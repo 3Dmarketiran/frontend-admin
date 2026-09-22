@@ -1,10 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api, ApiError, API_URL, getStoredSessionId } from "../../lib/api";
+import {
+  api,
+  ApiError,
+  API_URL,
+  getStoredSessionId,
+} from "../../lib/api";
 import { PageHeader } from "../../components/Layout";
 import { Spinner } from "../../components/ui";
 import { useToast } from "../../lib/toast";
-import type { Category, DimensionUnit, Product } from "../../types";
+import type {
+  Category,
+  DimensionUnit,
+  Product,
+} from "../../types";
 
 const STEPS = [
   "اطلاعات پایه",
@@ -17,6 +26,16 @@ const STEPS = [
   "ذخیره / انتشار",
 ];
 
+const IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
+
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_MODEL_BYTES = 100 * 1024 * 1024;
+const MAX_ZIP_BYTES = 150 * 1024 * 1024;
+
 export default function ProductWizard() {
   const { id: routeId } = useParams();
   const navigate = useNavigate();
@@ -25,12 +44,21 @@ export default function ProductWizard() {
   const [step, setStep] = useState(0);
   const [productId, setProductId] =
     useState<string | null>(routeId ?? null);
+
   const [product, setProduct] =
     useState<Product | null>(null);
+
   const [categories, setCategories] =
     useState<Category[]>([]);
+
   const [loading, setLoading] =
     useState(Boolean(routeId));
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [publishNow, setPublishNow] =
+    useState(false);
 
   const [name, setName] = useState("");
   const [shortDescription, setShortDescription] =
@@ -44,122 +72,161 @@ export default function ProductWizard() {
   const [width, setWidth] = useState("");
   const [height, setHeight] = useState("");
   const [depth, setDepth] = useState("");
+
   const [unit, setUnit] =
     useState<DimensionUnit>("CM");
 
-  const [publishNow, setPublishNow] =
-    useState(false);
-
-  const [saving, setSaving] =
-    useState(false);
-
   useEffect(() => {
+    let cancelled = false;
+
     api
       .get<{ categories: Category[] }>(
         "/api/categories"
       )
       .then((r) => {
-        const activeCategories = r.categories.filter(
-          (category) => category.isActive !== false
-        );
+        if (cancelled) return;
 
-        setCategories(activeCategories);
+        setCategories(
+          r.categories.filter(
+            (category) =>
+              category.isActive !== false
+          )
+        );
       })
-      .catch(() => {
+      .catch((err) => {
+        if (cancelled) return;
+
         push(
-          "دریافت دسته‌بندی‌ها ناموفق بود.",
+          err instanceof ApiError
+            ? err.message
+            : "دریافت دسته‌بندی‌ها ناموفق بود.",
           "error"
         );
       });
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [push]);
 
   useEffect(() => {
     if (!routeId) return;
+
+    let cancelled = false;
+
+    setLoading(true);
 
     api
       .get<{ product: Product }>(
         `/api/products/${routeId}`
       )
       .then((r) => {
+        if (cancelled) return;
+
         hydrate(r.product);
         setLoading(false);
       })
       .catch((err) => {
+        if (cancelled) return;
+
         push(
           err instanceof ApiError
             ? err.message
             : "دریافت محصول ناموفق بود.",
           "error"
         );
+
         setLoading(false);
       });
-  }, [routeId]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [routeId, push]);
 
   function hydrate(p: Product) {
     setProduct(p);
     setProductId(p.id);
+
     setName(p.name);
+
     setShortDescription(
       p.shortDescription ?? ""
     );
+
     setFullDescription(
       p.fullDescription ?? ""
     );
-    setCategoryId(p.categoryId ?? "");
+
+    setCategoryId(
+      p.categoryId ?? ""
+    );
+
     setTags(p.tags ?? "");
 
-    if (p.widthMm) {
-      setWidth(
-        String(
-          convertFromMm(
-            p.widthMm,
-            p.inputUnit ?? "CM"
-          )
-        )
-      );
-    }
+    setUnit(
+      p.inputUnit ?? "CM"
+    );
 
-    if (p.heightMm) {
-      setHeight(
-        String(
-          convertFromMm(
-            p.heightMm,
-            p.inputUnit ?? "CM"
+    setWidth(
+      p.widthMm == null
+        ? ""
+        : String(
+            convertFromMm(
+              p.widthMm,
+              p.inputUnit ?? "CM"
+            )
           )
-        )
-      );
-    }
+    );
 
-    if (p.depthMm) {
-      setDepth(
-        String(
-          convertFromMm(
-            p.depthMm,
-            p.inputUnit ?? "CM"
+    setHeight(
+      p.heightMm == null
+        ? ""
+        : String(
+            convertFromMm(
+              p.heightMm,
+              p.inputUnit ?? "CM"
+            )
           )
-        )
-      );
-    }
+    );
 
-    if (p.inputUnit) {
-      setUnit(p.inputUnit);
-    }
+    setDepth(
+      p.depthMm == null
+        ? ""
+        : String(
+            convertFromMm(
+              p.depthMm,
+              p.inputUnit ?? "CM"
+            )
+          )
+    );
+
+    setPublishNow(
+      p.visibility !== "PUBLISHED" ||
+        p.hasUnpublishedChanges
+    );
   }
 
   function convertFromMm(
     mm: number,
     u: DimensionUnit
-  ) {
-    if (u === "MM") return mm;
+  ): number {
+    if (u === "MM") {
+      return mm;
+    }
 
     if (u === "CM") {
       return (
-        Math.round((mm / 10) * 100) / 100
+        Math.round(
+          (mm / 10) * 100
+        ) / 100
       );
     }
 
     return (
-      Math.round((mm / 1000) * 1000) / 1000
+      Math.round(
+        (mm / 1000) * 1000
+      ) / 1000
     );
   }
 
@@ -175,42 +242,51 @@ export default function ProductWizard() {
   }
 
   async function saveBasicInfo() {
+    if (!name.trim()) {
+      push(
+        "نام محصول الزامی است.",
+        "error"
+      );
+      return;
+    }
+
     setSaving(true);
 
     try {
       const payload = {
-        name,
+        name: name.trim(),
+
         shortDescription:
-          shortDescription || undefined,
+          shortDescription.trim() ||
+          undefined,
+
         fullDescription:
-          fullDescription || undefined,
+          fullDescription.trim() ||
+          undefined,
+
         categoryId:
           categoryId || undefined,
-        tags: tags || undefined,
+
+        tags:
+          tags.trim() || undefined,
       };
 
-      if (!productId) {
-        const r =
-          await api.post<{
+      const r = productId
+        ? await api.put<{
+            product: Product;
+          }>(
+            `/api/products/${productId}`,
+            payload
+          )
+        : await api.post<{
             product: Product;
           }>(
             "/api/products",
             payload
           );
 
-        setProductId(r.product.id);
-        setProduct(r.product);
-      } else {
-        const r =
-          await api.put<{
-            product: Product;
-          }>(
-            `/api/products/${productId}`,
-            payload
-          );
-
-        setProduct(r.product);
-      }
+      setProductId(r.product.id);
+      setProduct(r.product);
 
       setStep(1);
     } catch (err) {
@@ -228,26 +304,48 @@ export default function ProductWizard() {
   async function saveDimensions() {
     if (!productId) return;
 
+    const values = [
+      width,
+      height,
+      depth,
+    ].map((value) =>
+      value === ""
+        ? undefined
+        : Number(value)
+    );
+
+    if (
+      values.some(
+        (value) =>
+          value !== undefined &&
+          (!Number.isFinite(value) ||
+            value < 0)
+      )
+    ) {
+      push(
+        "ابعاد باید عدد معتبر و صفر یا بزرگ‌تر باشند.",
+        "error"
+      );
+      return;
+    }
+
     setSaving(true);
 
     try {
+      const [w, h, d] = values;
+
       await api.put(
         `/api/products/${productId}`,
         {
-          width: width
-            ? Number(width)
-            : undefined,
-          height: height
-            ? Number(height)
-            : undefined,
-          depth: depth
-            ? Number(depth)
-            : undefined,
+          width: w,
+          height: h,
+          depth: d,
           unit,
         }
       );
 
       await refetchProduct();
+
       setStep(5);
     } catch (err) {
       push(
@@ -273,22 +371,24 @@ export default function ProductWizard() {
         );
 
         push(
-          "محصول ذخیره و درخواست انتشار ثبت شد.",
+          "درخواست انتشار ثبت شد و محصول وارد صف انتشار شد.",
           "success"
         );
       } else {
         push(
-          "محصول به‌صورت پیش‌نویس ذخیره شد.",
+          "محصول ذخیره شد. برای نمایش عمومی باید آن را منتشر کنید.",
           "success"
         );
       }
 
-      navigate("/seller/products");
+      navigate(
+        "/seller/products"
+      );
     } catch (err) {
       push(
         err instanceof ApiError
           ? err.message
-          : "خطا در نهایی‌سازی.",
+          : "خطا در نهایی‌سازی محصول.",
         "error"
       );
     } finally {
@@ -298,7 +398,6 @@ export default function ProductWizard() {
 
   const currentCategory =
     product?.category &&
-    product.categoryId &&
     product.categoryId === categoryId
       ? product.category
       : null;
@@ -309,10 +408,23 @@ export default function ProductWizard() {
         currentCategory.isActive === false
     );
 
+  const isPublished =
+    product?.visibility ===
+    "PUBLISHED";
+
+  const needsRepublish =
+    Boolean(
+      isPublished &&
+        product?.hasUnpublishedChanges
+    );
+
   if (loading) {
     return (
       <>
-        <PageHeader title="ویزارد ساخت محصول" />
+        <PageHeader
+          title="ویزارد ساخت محصول"
+        />
+
         <div className="content">
           <Spinner />
         </div>
@@ -357,21 +469,31 @@ export default function ProductWizard() {
           {step === 0 && (
             <div>
               <div className="form-group">
-                <label>نام محصول *</label>
+                <label>
+                  نام محصول *
+                </label>
+
                 <input
                   required
                   value={name}
                   onChange={(e) =>
-                    setName(e.target.value)
+                    setName(
+                      e.target.value
+                    )
                   }
                 />
               </div>
 
               <div className="form-group">
-                <label>توضیح کوتاه</label>
+                <label>
+                  توضیح کوتاه
+                </label>
+
                 <input
                   maxLength={300}
-                  value={shortDescription}
+                  value={
+                    shortDescription
+                  }
                   onChange={(e) =>
                     setShortDescription(
                       e.target.value
@@ -381,10 +503,15 @@ export default function ProductWizard() {
               </div>
 
               <div className="form-group">
-                <label>توضیح کامل</label>
+                <label>
+                  توضیح کامل
+                </label>
+
                 <textarea
                   rows={5}
-                  value={fullDescription}
+                  value={
+                    fullDescription
+                  }
                   onChange={(e) =>
                     setFullDescription(
                       e.target.value
@@ -395,7 +522,9 @@ export default function ProductWizard() {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>دسته‌بندی</label>
+                  <label>
+                    دسته‌بندی
+                  </label>
 
                   <select
                     value={categoryId}
@@ -411,7 +540,9 @@ export default function ProductWizard() {
 
                     {currentCategoryIsInactive && (
                       <option
-                        value={currentCategory?.id}
+                        value={
+                          currentCategory?.id
+                        }
                         disabled
                       >
                         {currentCategory?.name ??
@@ -420,14 +551,16 @@ export default function ProductWizard() {
                       </option>
                     )}
 
-                    {categories.map((c) => (
-                      <option
-                        key={c.id}
-                        value={c.id}
-                      >
-                        {c.name}
-                      </option>
-                    ))}
+                    {categories.map(
+                      (c) => (
+                        <option
+                          key={c.id}
+                          value={c.id}
+                        >
+                          {c.name}
+                        </option>
+                      )
+                    )}
                   </select>
 
                   {currentCategoryIsInactive && (
@@ -439,11 +572,9 @@ export default function ProductWizard() {
                           "var(--color-warning, #b45309)",
                       }}
                     >
-                      دسته‌بندی فعلی این محصول
-                      غیرفعال شده است و قابل انتخاب
-                      برای محصولات جدید نیست. برای
-                      تغییر آن، یک دسته‌بندی فعال
-                      انتخاب کنید.
+                      دسته‌بندی فعلی غیرفعال شده
+                      است. برای ادامه می‌توانید یک
+                      دسته‌بندی فعال انتخاب کنید.
                     </div>
                   )}
                 </div>
@@ -456,7 +587,9 @@ export default function ProductWizard() {
                   <input
                     value={tags}
                     onChange={(e) =>
-                      setTags(e.target.value)
+                      setTags(
+                        e.target.value
+                      )
                     }
                     placeholder="مبلمان, چوبی, مدرن"
                   />
@@ -465,8 +598,13 @@ export default function ProductWizard() {
 
               <button
                 className="btn btn-primary"
-                disabled={!name || saving}
-                onClick={saveBasicInfo}
+                disabled={
+                  !name.trim() ||
+                  saving
+                }
+                onClick={
+                  saveBasicInfo
+                }
               >
                 {saving
                   ? "در حال ذخیره..."
@@ -475,73 +613,105 @@ export default function ProductWizard() {
             </div>
           )}
 
-          {step === 1 && productId && (
-            <ImagesStep
-              productId={productId}
-              product={product}
-              onRefetch={refetchProduct}
-              onNext={() => setStep(2)}
-              onBack={() => setStep(0)}
-            />
-          )}
+          {step === 1 &&
+            productId && (
+              <ImagesStep
+                productId={productId}
+                product={product}
+                onRefetch={
+                  refetchProduct
+                }
+                onNext={() =>
+                  setStep(2)
+                }
+                onBack={() =>
+                  setStep(0)
+                }
+              />
+            )}
 
-          {step === 2 && productId && (
-            <ModelStep
-              productId={productId}
-              product={product}
-              kind="3D"
-              onRefetch={refetchProduct}
-              onNext={() => setStep(3)}
-              onBack={() => setStep(1)}
-            />
-          )}
+          {step === 2 &&
+            productId && (
+              <ModelStep
+                productId={productId}
+                product={product}
+                kind="3D"
+                onRefetch={
+                  refetchProduct
+                }
+                onNext={() =>
+                  setStep(3)
+                }
+                onBack={() =>
+                  setStep(1)
+                }
+              />
+            )}
 
-          {step === 3 && productId && (
-            <ModelStep
-              productId={productId}
-              product={product}
-              kind="AR"
-              onRefetch={refetchProduct}
-              onNext={() => setStep(4)}
-              onBack={() => setStep(2)}
-            />
-          )}
+          {step === 3 &&
+            productId && (
+              <ModelStep
+                productId={productId}
+                product={product}
+                kind="AR"
+                onRefetch={
+                  refetchProduct
+                }
+                onNext={() =>
+                  setStep(4)
+                }
+                onBack={() =>
+                  setStep(2)
+                }
+              />
+            )}
 
           {step === 4 && (
             <div>
               <p
                 className="form-help"
-                style={{ marginBottom: 12 }}
+                style={{
+                  marginBottom: 12,
+                }}
               >
-                ابعاد واقعی محصول را وارد کنید —
-                این مقادیر برای نمایش با مقیاس
-                واقعی در واقعیت افزوده استفاده
-                می‌شود.
+                ابعاد واقعی محصول را وارد کنید.
+                این مقادیر برای مقیاس نمایش سه‌بعدی
+                و واقعیت افزوده استفاده می‌شوند.
               </p>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>عرض</label>
+                  <label>
+                    عرض
+                  </label>
+
                   <input
                     type="number"
                     min={0}
                     step="any"
                     value={width}
                     onChange={(e) =>
-                      setWidth(e.target.value)
+                      setWidth(
+                        e.target.value
+                      )
                     }
                   />
                 </div>
 
                 <div className="form-group">
-                  <label>ارتفاع</label>
+                  <label>
+                    ارتفاع
+                  </label>
+
                   <input
                     type="number"
                     min={0}
                     step="any"
                     value={height}
                     onChange={(e) =>
-                      setHeight(e.target.value)
+                      setHeight(
+                        e.target.value
+                      )
                     }
                   />
                 </div>
@@ -549,20 +719,27 @@ export default function ProductWizard() {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>عمق</label>
+                  <label>
+                    عمق
+                  </label>
+
                   <input
                     type="number"
                     min={0}
                     step="any"
                     value={depth}
                     onChange={(e) =>
-                      setDepth(e.target.value)
+                      setDepth(
+                        e.target.value
+                      )
                     }
                   />
                 </div>
 
                 <div className="form-group">
-                  <label>واحد</label>
+                  <label>
+                    واحد
+                  </label>
 
                   <select
                     value={unit}
@@ -576,9 +753,11 @@ export default function ProductWizard() {
                     <option value="MM">
                       میلی‌متر
                     </option>
+
                     <option value="CM">
                       سانتی‌متر
                     </option>
+
                     <option value="M">
                       متر
                     </option>
@@ -594,7 +773,10 @@ export default function ProductWizard() {
               >
                 <button
                   className="btn btn-outline"
-                  onClick={() => setStep(3)}
+                  disabled={saving}
+                  onClick={() =>
+                    setStep(3)
+                  }
                 >
                   قبلی
                 </button>
@@ -602,7 +784,9 @@ export default function ProductWizard() {
                 <button
                   className="btn btn-primary"
                   disabled={saving}
-                  onClick={saveDimensions}
+                  onClick={
+                    saveDimensions
+                  }
                 >
                   {saving
                     ? "در حال ذخیره..."
@@ -616,19 +800,47 @@ export default function ProductWizard() {
             <div>
               <p
                 className="form-help"
-                style={{ marginBottom: 12 }}
+                style={{
+                  marginBottom: 12,
+                }}
               >
-                وضعیت نمایش محصول را انتخاب کنید.
-                برای اینکه محصول روی وب‌سایت عمومی
-                دیده شود باید آن را منتشر کنید.
+                محصول فقط از مسیر انتشار وارد
+                سایت عمومی می‌شود. ویرایش یک محصول
+                منتشرشده، در صورت تغییر محتوا،
+                نیازمند انتشار مجدد است.
               </p>
+
+              {isPublished &&
+                !needsRepublish && (
+                  <StatusBox
+                    title="محصول منتشر است"
+                    text="نسخه فعلی محصول در سایت عمومی منتشر شده و تغییر منتشرنشده‌ای ندارد."
+                    tone="success"
+                  />
+                )}
+
+              {needsRepublish && (
+                <StatusBox
+                  title="تغییرات منتشرنشده دارید"
+                  text="اطلاعات محصول تغییر کرده است. برای اعمال تغییرات روی سایت عمومی، گزینه انتشار مجدد را فعال کنید."
+                  tone="warning"
+                />
+              )}
+
+              {!isPublished && (
+                <StatusBox
+                  title="محصول هنوز منتشر نشده"
+                  text="در حال حاضر محصول به‌صورت پیش‌نویس است و در سایت عمومی نمایش داده نمی‌شود."
+                  tone="info"
+                />
+              )}
 
               <label
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  marginBottom: 10,
+                  margin: "14px 0",
                 }}
               >
                 <input
@@ -641,8 +853,9 @@ export default function ProductWizard() {
                   }
                 />
 
-                هم‌زمان با ذخیره نهایی، محصول منتشر
-                شود
+                {needsRepublish
+                  ? "انتشار مجدد تغییرات"
+                  : "انتشار محصول پس از ذخیره نهایی"}
               </label>
 
               <div
@@ -653,14 +866,20 @@ export default function ProductWizard() {
               >
                 <button
                   className="btn btn-outline"
-                  onClick={() => setStep(4)}
+                  disabled={saving}
+                  onClick={() =>
+                    setStep(4)
+                  }
                 >
                   قبلی
                 </button>
 
                 <button
                   className="btn btn-primary"
-                  onClick={() => setStep(6)}
+                  disabled={saving}
+                  onClick={() =>
+                    setStep(6)
+                  }
                 >
                   بعدی
                 </button>
@@ -668,23 +887,77 @@ export default function ProductWizard() {
             </div>
           )}
 
-          {step === 6 && product && (
+          {step === 6 &&
+            product && (
+              <div>
+                <p
+                  className="form-help"
+                  style={{
+                    marginBottom: 12,
+                  }}
+                >
+                  پیش‌نمایش اطلاعاتی و سه‌بعدی محصول
+                  قبل از ذخیره نهایی.
+                </p>
+
+                <PreviewCard
+                  product={product}
+                  name={name}
+                  shortDescription={
+                    shortDescription
+                  }
+                />
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    marginTop: 14,
+                  }}
+                >
+                  <button
+                    className="btn btn-outline"
+                    disabled={saving}
+                    onClick={() =>
+                      setStep(5)
+                    }
+                  >
+                    قبلی
+                  </button>
+
+                  <button
+                    className="btn btn-primary"
+                    disabled={saving}
+                    onClick={() =>
+                      setStep(7)
+                    }
+                  >
+                    بعدی
+                  </button>
+                </div>
+              </div>
+            )}
+
+          {step === 7 && (
             <div>
               <p
                 className="form-help"
-                style={{ marginBottom: 12 }}
+                style={{
+                  marginBottom: 14,
+                }}
               >
-                پیش‌نمایش مشابه نمایش محصول در
-                وب‌سایت عمومی است.
+                {publishNow
+                  ? "با ثبت نهایی، درخواست انتشار به صف انتشار ارسال می‌شود. پس از پردازش، نسخه عمومی به‌روزرسانی خواهد شد."
+                  : "محصول ذخیره می‌شود و در وضعیت پیش‌نویس/تغییرات منتشرنشده باقی می‌ماند."}
               </p>
 
-              <PreviewCard
-                product={product}
-                name={name}
-                shortDescription={
-                  shortDescription
-                }
-              />
+              {publishNow && (
+                <StatusBox
+                  title="انتشار از طریق صف انجام می‌شود"
+                  text="بلافاصله بعد از کلیک، سرور درخواست انتشار را ثبت می‌کند؛ پردازش و به‌روزرسانی سایت عمومی در مرحله بعد انجام می‌شود."
+                  tone="info"
+                />
+              )}
 
               <div
                 style={{
@@ -695,41 +968,10 @@ export default function ProductWizard() {
               >
                 <button
                   className="btn btn-outline"
-                  onClick={() => setStep(5)}
-                >
-                  قبلی
-                </button>
-
-                <button
-                  className="btn btn-primary"
-                  onClick={() => setStep(7)}
-                >
-                  بعدی
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === 7 && (
-            <div>
-              <p
-                className="form-help"
-                style={{ marginBottom: 14 }}
-              >
-                {publishNow
-                  ? "با زدن دکمه زیر، محصول ذخیره و درخواست انتشار واقعی ارسال می‌شود."
-                  : "محصول به‌صورت پیش‌نویس ذخیره می‌شود."}
-              </p>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                }}
-              >
-                <button
-                  className="btn btn-outline"
-                  onClick={() => setStep(6)}
+                  disabled={saving}
+                  onClick={() =>
+                    setStep(6)
+                  }
                 >
                   قبلی
                 </button>
@@ -742,7 +984,7 @@ export default function ProductWizard() {
                   {saving
                     ? "در حال ثبت..."
                     : publishNow
-                      ? "ذخیره و انتشار"
+                      ? "ذخیره و ارسال برای انتشار"
                       : "ذخیره به‌صورت پیش‌نویس"}
                 </button>
               </div>
@@ -754,9 +996,66 @@ export default function ProductWizard() {
   );
 }
 
-// ---------------------------------------------------------------------
-// Images
-// ---------------------------------------------------------------------
+function StatusBox({
+  title,
+  text,
+  tone,
+}: {
+  title: string;
+  text: string;
+  tone:
+    | "success"
+    | "warning"
+    | "info";
+}) {
+  const colors = {
+    success: {
+      bg: "#ecfdf5",
+      border: "#a7f3d0",
+      text: "#065f46",
+    },
+    warning: {
+      bg: "#fffbeb",
+      border: "#fde68a",
+      text: "#92400e",
+    },
+    info: {
+      bg: "#eff6ff",
+      border: "#bfdbfe",
+      text: "#1e40af",
+    },
+  }[tone];
+
+  return (
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 12,
+        background: colors.bg,
+        border: `1px solid ${colors.border}`,
+        color: colors.text,
+      }}
+    >
+      <strong
+        style={{
+          display: "block",
+          marginBottom: 4,
+        }}
+      >
+        {title}
+      </strong>
+
+      <span
+        style={{
+          fontSize: 13,
+          lineHeight: 1.7,
+        }}
+      >
+        {text}
+      </span>
+    </div>
+  );
+}
 
 function ImagesStep({
   productId,
@@ -785,12 +1084,42 @@ function ImagesStep({
   const [dragging, setDragging] =
     useState(false);
 
-  async function uploadFile(file: File) {
+  const inputRef =
+    useRef<HTMLInputElement | null>(
+      null
+    );
+
+  async function uploadFile(
+    file: File
+  ) {
+    if (
+      !IMAGE_TYPES.includes(
+        file.type
+      )
+    ) {
+      throw new Error(
+        `فرمت تصویر ${file.name} مجاز نیست.`
+      );
+    }
+
+    if (
+      file.size >
+      MAX_IMAGE_BYTES
+    ) {
+      throw new Error(
+        `حجم تصویر ${file.name} بیشتر از 10MB است.`
+      );
+    }
+
     setCurrentFile(file.name);
     setProgress(0);
 
     const fd = new FormData();
-    fd.append("image", file);
+
+    fd.append(
+      "image",
+      file
+    );
 
     await uploadWithProgress(
       `/api/products/${productId}/images`,
@@ -805,42 +1134,43 @@ function ImagesStep({
     const selected =
       Array.from(files);
 
-    if (!selected.length) return;
+    if (
+      !selected.length ||
+      uploading
+    ) {
+      return;
+    }
 
     setUploading(true);
 
+    let uploaded = 0;
+
     try {
-      for (const file of selected) {
-        if (
-          ![
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-          ].includes(file.type)
-        ) {
+      for (
+        const file of selected
+      ) {
+        try {
+          await uploadFile(file);
+          uploaded += 1;
+        } catch (err) {
           push(
-            `فرمت تصویر ${file.name} مجاز نیست.`,
+            err instanceof ApiError ||
+              err instanceof Error
+              ? err.message
+              : "آپلود تصویر ناموفق بود.",
             "error"
           );
-          continue;
         }
-
-        await uploadFile(file);
       }
 
       await onRefetch();
 
-      push(
-        "تصاویر با موفقیت آپلود شدند.",
-        "success"
-      );
-    } catch (err) {
-      push(
-        err instanceof ApiError
-          ? err.message
-          : "خطا در آپلود تصویر.",
-        "error"
-      );
+      if (uploaded) {
+        push(
+          `${uploaded} تصویر با موفقیت آپلود شد.`,
+          "success"
+        );
+      }
     } finally {
       setUploading(false);
       setProgress(0);
@@ -851,12 +1181,19 @@ function ImagesStep({
   async function setPrimary(
     imageId: string
   ) {
+    if (uploading) return;
+
     try {
       await api.post(
         `/api/products/${productId}/images/${imageId}/primary`
       );
 
       await onRefetch();
+
+      push(
+        "تصویر اصلی تغییر کرد.",
+        "success"
+      );
     } catch (err) {
       push(
         err instanceof ApiError
@@ -870,12 +1207,19 @@ function ImagesStep({
   async function remove(
     imageId: string
   ) {
+    if (uploading) return;
+
     try {
       await api.delete(
         `/api/products/${productId}/images/${imageId}`
       );
 
       await onRefetch();
+
+      push(
+        "تصویر حذف شد.",
+        "success"
+      );
     } catch (err) {
       push(
         err instanceof ApiError
@@ -891,12 +1235,24 @@ function ImagesStep({
 
   return (
     <div>
+      <p
+        className="form-help"
+        style={{
+          marginBottom: 10,
+        }}
+      >
+        تصاویر JPG، PNG یا WebP. حداکثر حجم هر
+        تصویر 10MB. تصاویر در سرور بهینه‌سازی
+        می‌شوند.
+      </p>
+
       <label
         className={`dropzone ${
           dragging ? "dragging" : ""
         }`}
         onDragOver={(e) => {
           e.preventDefault();
+
           if (!uploading) {
             setDragging(true);
           }
@@ -917,7 +1273,7 @@ function ImagesStep({
       >
         {uploading
           ? `در حال آپلود ${currentFile}`
-          : "تصاویر را اینجا بکشید یا کلیک کنید"}
+          : "برای انتخاب یک یا چند تصویر کلیک کنید یا تصاویر را اینجا رها کنید"}
 
         <small
           style={{
@@ -926,10 +1282,11 @@ function ImagesStep({
             opacity: 0.7,
           }}
         >
-          JPG، PNG یا WEBP — حداکثر 10MB
+          JPG / PNG / WebP — حداکثر 10MB برای هر فایل
         </small>
 
         <input
+          ref={inputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
           multiple
@@ -956,43 +1313,56 @@ function ImagesStep({
 
       {images.length > 0 && (
         <div className="image-grid">
-          {images.map((img) => (
-            <div
-              key={img.id}
-              className={`image-tile ${
-                img.isPrimary
-                  ? "primary"
-                  : ""
-              }`}
-            >
-              <img
-                src={img.url}
-                alt=""
-              />
+          {images.map(
+            (img) => (
+              <div
+                key={img.id}
+                className={`image-tile ${
+                  img.isPrimary
+                    ? "primary"
+                    : ""
+                }`}
+              >
+                <img
+                  src={img.url}
+                  alt=""
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.style.opacity =
+                      "0.35";
+                  }}
+                />
 
-              <div className="tile-actions">
-                {!img.isPrimary && (
+                <div className="tile-actions">
+                  {!img.isPrimary && (
+                    <button
+                      className="btn btn-sm btn-primary"
+                      disabled={uploading}
+                      onClick={() =>
+                        void setPrimary(
+                          img.id
+                        )
+                      }
+                    >
+                      اصلی
+                    </button>
+                  )}
+
                   <button
-                    className="btn btn-sm btn-primary"
+                    className="btn btn-sm btn-danger"
+                    disabled={uploading}
                     onClick={() =>
-                      setPrimary(img.id)
+                      void remove(
+                        img.id
+                      )
                     }
                   >
-                    اصلی
+                    حذف
                   </button>
-                )}
-
-                <button
-                  className="btn btn-sm btn-danger"
-                  onClick={() =>
-                    remove(img.id)
-                  }
-                >
-                  حذف
-                </button>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          )}
         </div>
       )}
 
@@ -1022,10 +1392,6 @@ function ImagesStep({
     </div>
   );
 }
-
-// ---------------------------------------------------------------------
-// 3D / AR models
-// ---------------------------------------------------------------------
 
 function ModelStep({
   productId,
@@ -1081,20 +1447,43 @@ function ModelStep({
     const isZip =
       extension === "zip";
 
-    const fd = new FormData();
-
-    if (isZip) {
-      fd.append("modelZip", file);
-    } else {
-      fd.append("model", file);
+    if (
+      isZip &&
+      file.size >
+        MAX_ZIP_BYTES
+    ) {
+      throw new Error(
+        "حجم ZIP بیشتر از 150MB است."
+      );
     }
+
+    if (
+      !isZip &&
+      file.size >
+        MAX_MODEL_BYTES
+    ) {
+      throw new Error(
+        "حجم فایل مدل بیشتر از 100MB است."
+      );
+    }
+
+    const fd =
+      new FormData();
+
+    fd.append(
+      isZip
+        ? "modelZip"
+        : "model",
+      file
+    );
 
     setCurrentFile(file.name);
     setProgress(0);
 
-    const endpoint = isZip
-      ? `/api/products/${productId}/models/zip`
-      : `/api/products/${productId}/models`;
+    const endpoint =
+      isZip
+        ? `/api/products/${productId}/models/zip`
+        : `/api/products/${productId}/models`;
 
     await uploadWithProgress(
       endpoint,
@@ -1109,7 +1498,12 @@ function ModelStep({
     const file =
       Array.from(files)[0];
 
-    if (!file) return;
+    if (
+      !file ||
+      uploading
+    ) {
+      return;
+    }
 
     const extension =
       file.name
@@ -1119,15 +1513,24 @@ function ModelStep({
 
     const allowed =
       kind === "3D"
-        ? ["glb", "gltf", "zip"]
-        : ["usdz", "zip"];
+        ? [
+            "glb",
+            "gltf",
+            "zip",
+          ]
+        : [
+            "usdz",
+            "zip",
+          ];
 
     if (
       !extension ||
-      !allowed.includes(extension)
+      !allowed.includes(
+        extension
+      )
     ) {
       push(
-        `فرمت فایل برای این مرحله مجاز نیست.`,
+        "فرمت فایل برای این مرحله مجاز نیست.",
         "error"
       );
       return;
@@ -1136,20 +1539,24 @@ function ModelStep({
     setUploading(true);
 
     try {
-      await uploadModelFile(file);
+      await uploadModelFile(
+        file
+      );
+
       await onRefetch();
 
       push(
         extension === "zip"
           ? "فایل ZIP با موفقیت پردازش شد."
-          : "فایل سه‌بعدی با موفقیت آپلود شد.",
+          : "فایل مدل با موفقیت آپلود شد.",
         "success"
       );
     } catch (err) {
       push(
-        err instanceof ApiError
+        err instanceof ApiError ||
+          err instanceof Error
           ? err.message
-          : "خطا در آپلود فایل سه‌بعدی.",
+          : "خطا در آپلود فایل مدل.",
         "error"
       );
     } finally {
@@ -1162,12 +1569,19 @@ function ModelStep({
   async function remove(
     modelId: string
   ) {
+    if (uploading) return;
+
     try {
       await api.delete(
         `/api/products/${productId}/models/${modelId}`
       );
 
       await onRefetch();
+
+      push(
+        "مدل حذف شد.",
+        "success"
+      );
     } catch (err) {
       push(
         err instanceof ApiError
@@ -1218,7 +1632,11 @@ function ModelStep({
       >
         {uploading
           ? `در حال آپلود ${currentFile}`
-          : `برای انتخاب فایل ${kind === "3D" ? "GLB / GLTF / ZIP" : "USDZ / ZIP"} کلیک کنید`}
+          : `برای انتخاب فایل ${
+              kind === "3D"
+                ? "GLB / GLTF / ZIP"
+                : "USDZ / ZIP"
+            } کلیک کنید یا فایل را اینجا رها کنید`}
 
         <small
           style={{
@@ -1227,8 +1645,7 @@ function ModelStep({
             opacity: 0.7,
           }}
         >
-          فایل مدل حداکثر 100MB و ZIP حداکثر
-          150MB
+          مدل حداکثر 100MB — ZIP حداکثر 150MB
         </small>
 
         <input
@@ -1262,44 +1679,50 @@ function ModelStep({
             paddingRight: 18,
           }}
         >
-          {models.map((m) => (
-            <li
-              key={m.id}
-              style={{
-                marginBottom: 6,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-              }}
-            >
-              <span className="badge badge-info">
-                {m.kind}
-              </span>
-
-              <a
-                href={m.url}
-                target="_blank"
-                rel="noreferrer"
+          {models.map(
+            (m) => (
+              <li
+                key={m.id}
                 style={{
-                  color:
-                    "var(--color-primary)",
+                  marginBottom: 8,
+                  display: "flex",
+                  alignItems:
+                    "center",
+                  gap: 8,
+                  flexWrap:
+                    "wrap",
                 }}
               >
-                مشاهده فایل
-              </a>
+                <span className="badge badge-info">
+                  {m.kind}
+                </span>
 
-              <button
-                className="btn btn-sm btn-danger"
-                disabled={uploading}
-                onClick={() =>
-                  remove(m.id)
-                }
-              >
-                حذف
-              </button>
-            </li>
-          ))}
+                <a
+                  href={m.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    color:
+                      "var(--color-primary)",
+                  }}
+                >
+                  مشاهده فایل
+                </a>
+
+                <button
+                  className="btn btn-sm btn-danger"
+                  disabled={uploading}
+                  onClick={() =>
+                    void remove(
+                      m.id
+                    )
+                  }
+                >
+                  حذف
+                </button>
+              </li>
+            )
+          )}
         </ul>
       )}
 
@@ -1330,10 +1753,6 @@ function ModelStep({
   );
 }
 
-// ---------------------------------------------------------------------
-// Upload progress
-// ---------------------------------------------------------------------
-
 function UploadProgress({
   progress,
   filename,
@@ -1341,6 +1760,15 @@ function UploadProgress({
   progress: number;
   filename: string;
 }) {
+  const value =
+    Math.min(
+      100,
+      Math.max(
+        0,
+        progress
+      )
+    );
+
   return (
     <div
       style={{
@@ -1365,16 +1793,22 @@ function UploadProgress({
       >
         <span
           style={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
+            overflow:
+              "hidden",
+            textOverflow:
+              "ellipsis",
+            whiteSpace:
+              "nowrap",
           }}
         >
           {filename}
         </span>
 
         <strong>
-          {Math.round(progress)}%
+          {Math.round(
+            value
+          )}
+          %
         </strong>
       </div>
 
@@ -1384,15 +1818,13 @@ function UploadProgress({
           borderRadius: 999,
           background:
             "var(--color-border, #e2e8f0)",
-          overflow: "hidden",
+          overflow:
+            "hidden",
         }}
       >
         <div
           style={{
-            width: `${Math.min(
-              100,
-              Math.max(0, progress)
-            )}%`,
+            width: `${value}%`,
             height: "100%",
             borderRadius: 999,
             background:
@@ -1405,10 +1837,6 @@ function UploadProgress({
     </div>
   );
 }
-
-// ---------------------------------------------------------------------
-// XMLHttpRequest upload with real progress
-// ---------------------------------------------------------------------
 
 function uploadWithProgress<T = unknown>(
   path: string,
@@ -1427,7 +1855,8 @@ function uploadWithProgress<T = unknown>(
         `${API_URL}${path}`
       );
 
-      xhr.withCredentials = true;
+      xhr.withCredentials =
+        true;
 
       const sessionId =
         getStoredSessionId();
@@ -1439,19 +1868,18 @@ function uploadWithProgress<T = unknown>(
         );
       }
 
-      xhr.upload.onprogress = (
-        event
-      ) => {
-        if (!event.lengthComputable) {
-          return;
-        }
-
-        onProgress(
-          (event.loaded /
-            event.total) *
-            100
-        );
-      };
+      xhr.upload.onprogress =
+        (event) => {
+          if (
+            event.lengthComputable
+          ) {
+            onProgress(
+              (event.loaded /
+                event.total) *
+                100
+            );
+          }
+        };
 
       xhr.onload = () => {
         const contentType =
@@ -1459,7 +1887,8 @@ function uploadWithProgress<T = unknown>(
             "content-type"
           ) || "";
 
-        let data: unknown = null;
+        let data: unknown =
+          null;
 
         if (
           contentType.includes(
@@ -1481,32 +1910,47 @@ function uploadWithProgress<T = unknown>(
           xhr.status < 300
         ) {
           onProgress(100);
-          resolve(data as T);
+          resolve(
+            data as T
+          );
           return;
         }
 
-        const message =
-          typeof data === "object" &&
-          data !== null
-            ? (
-                data as {
-                  error?: string;
-                  message?: string;
-                }
-              ).error ||
-              (
-                data as {
-                  error?: string;
-                  message?: string;
-                }
-              ).message
-            : undefined;
+        let message:
+          | string
+          | undefined;
+
+        if (
+          data &&
+          typeof data ===
+            "object"
+        ) {
+          const value =
+            data as Record<
+              string,
+              unknown
+            >;
+
+          if (
+            typeof value.error ===
+            "string"
+          ) {
+            message =
+              value.error;
+          } else if (
+            typeof value.message ===
+            "string"
+          ) {
+            message =
+              value.message;
+          }
+        }
 
         reject(
           new ApiError(
             xhr.status,
             message ||
-              `خطای غیرمنتظره (${xhr.status})`
+              `خطای آپلود (${xhr.status})`
           )
         );
       };
@@ -1529,14 +1973,12 @@ function uploadWithProgress<T = unknown>(
         );
       };
 
-      xhr.send(formData);
+      xhr.send(
+        formData
+      );
     }
   );
 }
-
-// ---------------------------------------------------------------------
-// Preview
-// ---------------------------------------------------------------------
 
 function PreviewCard({
   product,
@@ -1557,7 +1999,8 @@ function PreviewCard({
   const primaryImage =
     product.images.find(
       (i) => i.isPrimary
-    ) ?? product.images[0];
+    ) ??
+    product.images[0];
 
   return (
     <div
@@ -1565,7 +2008,8 @@ function PreviewCard({
         border:
           "1px solid var(--color-border)",
         borderRadius: 14,
-        overflow: "hidden",
+        overflow:
+          "hidden",
       }}
     >
       {glb ? (
@@ -1577,17 +2021,20 @@ function PreviewCard({
           style={{
             width: "100%",
             aspectRatio: "1/1",
-            background: "#F8FAFC",
+            background:
+              "#F8FAFC",
           }}
         />
       ) : primaryImage ? (
         <img
           src={primaryImage.url}
           alt={name}
+          loading="lazy"
           style={{
             width: "100%",
             aspectRatio: "1/1",
-            objectFit: "cover",
+            objectFit:
+              "cover",
           }}
         />
       ) : (
@@ -1600,14 +2047,19 @@ function PreviewCard({
         />
       )}
 
-      <div style={{ padding: 14 }}>
+      <div
+        style={{
+          padding: 14,
+        }}
+      >
         <div
           style={{
             fontWeight: 800,
             fontSize: "1.1rem",
           }}
         >
-          {name || product.name}
+          {name ||
+            product.name}
         </div>
 
         {shortDescription && (
