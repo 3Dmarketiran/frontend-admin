@@ -124,6 +124,13 @@ export default function Layout({
           ))}
         </nav>
 
+        {area === "seller" && (
+          <NavLink to="/seller/subscription" className="subscription-chip" style={{ textDecoration: "none" }}>
+            <small>وضعیت اشتراک</small>
+            <strong>مشاهده جزئیات پلن</strong>
+          </NavLink>
+        )}
+
         <div className="user-box">
           <div>{user.email}</div>
 
