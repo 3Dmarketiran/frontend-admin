@@ -67,3 +67,10 @@
 نکته: قابلیت «افزودن دسته‌بندی از پنل ادمین» از قبل به‌طور کامل در
 src/pages/admin/Categories.tsx پیاده‌سازی شده بود؛ فقط به‌خاطر خطای api.patch از بالا
 کل بیلد fail می‌شد. با رفع آن خطا، این قابلیت اکنون در دسترس است.
+
+## به‌روزرسانی: رفع خطای npm ci (عدم هم‌گامی lock file)
+چون Tailwind را در نوبت قبل به package.json اضافه کردم ولی امکان اجرای npm install
+(و آپدیت خودکار package-lock.json) در این محیط وجود نداشت، مرحله‌ی "npm ci" در
+GitHub Actions fail می‌شد (npm ci به تطابق دقیق lock file نیاز دارد). دستور نصب در
+.github/workflows/deploy.yml از "npm ci" به "npm install" تغییر کرد تا lock file
+در همان مرحله‌ی build به‌روزرسانی بشه.
