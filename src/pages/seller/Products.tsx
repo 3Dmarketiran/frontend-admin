@@ -420,7 +420,7 @@ export default function Products() {
   }
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="seller-dashboard-page seller-products-page space-y-6 pb-10">
       <PageHeader
         title="محصولات"
       />

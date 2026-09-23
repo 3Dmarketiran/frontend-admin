@@ -10,7 +10,6 @@ import { PageHeader } from "../../components/Layout";
 import { Spinner } from "../../components/ui";
 import { useToast } from "../../lib/toast";
 import type {
-  Category,
   DimensionUnit,
   Product,
 } from "../../types";
@@ -48,9 +47,6 @@ export default function ProductWizard() {
   const [product, setProduct] =
     useState<Product | null>(null);
 
-  const [categories, setCategories] =
-    useState<Category[]>([]);
-
   const [loading, setLoading] =
     useState(Boolean(routeId));
 
@@ -65,8 +61,6 @@ export default function ProductWizard() {
     useState("");
   const [fullDescription, setFullDescription] =
     useState("");
-  const [categoryId, setCategoryId] =
-    useState("");
   const [tags, setTags] = useState("");
 
   const [width, setWidth] = useState("");
@@ -75,39 +69,6 @@ export default function ProductWizard() {
 
   const [unit, setUnit] =
     useState<DimensionUnit>("CM");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    api
-      .get<{ categories: Category[] }>(
-        "/api/categories"
-      )
-      .then((r) => {
-        if (cancelled) return;
-
-        setCategories(
-          r.categories.filter(
-            (category) =>
-              category.isActive !== false
-          )
-        );
-      })
-      .catch((err) => {
-        if (cancelled) return;
-
-        push(
-          err instanceof ApiError
-            ? err.message
-            : "دریافت دسته‌بندی‌ها ناموفق بود.",
-          "error"
-        );
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [push]);
 
   useEffect(() => {
     if (!routeId) return;
@@ -156,10 +117,6 @@ export default function ProductWizard() {
 
     setFullDescription(
       p.fullDescription ?? ""
-    );
-
-    setCategoryId(
-      p.categoryId ?? ""
     );
 
     setTags(p.tags ?? "");
@@ -263,9 +220,6 @@ export default function ProductWizard() {
         fullDescription:
           fullDescription.trim() ||
           undefined,
-
-        categoryId:
-          categoryId || undefined,
 
         tags:
           tags.trim() || undefined,
@@ -396,18 +350,6 @@ export default function ProductWizard() {
     }
   }
 
-  const currentCategory =
-    product?.category &&
-    product.categoryId === categoryId
-      ? product.category
-      : null;
-
-  const currentCategoryIsInactive =
-    Boolean(
-      currentCategory &&
-        currentCategory.isActive === false
-    );
-
   const isPublished =
     product?.visibility ===
     "PUBLISHED";
@@ -520,80 +462,20 @@ export default function ProductWizard() {
                 />
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>
-                    دسته‌بندی
-                  </label>
+              <div className="form-group">
+                <label>
+                  برچسب‌ها (با کاما جدا کنید)
+                </label>
 
-                  <select
-                    value={categoryId}
-                    onChange={(e) =>
-                      setCategoryId(
-                        e.target.value
-                      )
-                    }
-                  >
-                    <option value="">
-                      بدون دسته‌بندی
-                    </option>
-
-                    {currentCategoryIsInactive && (
-                      <option
-                        value={
-                          currentCategory?.id
-                        }
-                        disabled
-                      >
-                        {currentCategory?.name ??
-                          "دسته‌بندی فعلی"}{" "}
-                        — غیرفعال
-                      </option>
-                    )}
-
-                    {categories.map(
-                      (c) => (
-                        <option
-                          key={c.id}
-                          value={c.id}
-                        >
-                          {c.name}
-                        </option>
-                      )
-                    )}
-                  </select>
-
-                  {currentCategoryIsInactive && (
-                    <div
-                      className="form-help"
-                      style={{
-                        marginTop: 6,
-                        color:
-                          "var(--color-warning, #b45309)",
-                      }}
-                    >
-                      دسته‌بندی فعلی غیرفعال شده
-                      است. برای ادامه می‌توانید یک
-                      دسته‌بندی فعال انتخاب کنید.
-                    </div>
-                  )}
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    برچسب‌ها (با کاما جدا کنید)
-                  </label>
-
-                  <input
-                    value={tags}
-                    onChange={(e) =>
-                      setTags(
-                        e.target.value
-                      )
-                    }
-                    placeholder="مبلمان, چوبی, مدرن"
-                  />
-                </div>
+                <input
+                  value={tags}
+                  onChange={(e) =>
+                    setTags(
+                      e.target.value
+                    )
+                  }
+                  placeholder="مبلمان, چوبی, مدرن"
+                />
               </div>
 
               <button

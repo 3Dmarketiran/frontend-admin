@@ -237,3 +237,100 @@ a.btn + a.btn {
     gap: 6px;
   }
 }
+
+/* ================================
+   Seller dashboard visual alignment
+   ================================ */
+
+.seller-dashboard-page {
+  width: min(100% - 56px, 1400px);
+  margin-inline: auto;
+  padding: 28px 0 42px;
+  color: var(--color-text);
+}
+
+.seller-dashboard-page .rounded-2xl,
+.seller-dashboard-page .card {
+  border-radius: 20px;
+}
+
+.seller-dashboard-page .bg-white {
+  background: var(--color-surface);
+}
+
+.seller-dashboard-page .border,
+.seller-dashboard-page .border-slate-200 {
+  border-color: var(--color-border);
+}
+
+.seller-dashboard-page .text-slate-900 {
+  color: var(--color-text);
+}
+
+.seller-dashboard-page .text-slate-500,
+.seller-dashboard-page .text-slate-600,
+.seller-dashboard-page .text-slate-400 {
+  color: var(--color-text-muted);
+}
+
+.seller-dashboard-page .bg-slate-100 {
+  background: color-mix(in srgb, var(--color-text) 6%, var(--color-background));
+}
+
+.seller-dashboard-page .bg-red-50 {
+  background: #fff1f2;
+}
+
+.seller-dashboard-page .bg-amber-50 {
+  background: #fffbeb;
+}
+
+.seller-dashboard-page .border-red-200 {
+  border-color: #fecdd3;
+}
+
+.seller-dashboard-page .border-amber-200 {
+  border-color: #fde68a;
+}
+
+.seller-dashboard-page .shadow-sm {
+  box-shadow: var(--shadow-sm);
+}
+
+.seller-dashboard-page .shadow-md {
+  box-shadow: var(--shadow-md);
+}
+
+.seller-dashboard-page .btn,
+.seller-dashboard-page button[class*="rounded-xl"] {
+  border-radius: 13px;
+}
+
+@media (max-width: 800px) {
+  .seller-dashboard-page {
+    width: calc(100% - 28px);
+    padding: 18px 0 30px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .seller-dashboard-page .bg-white {
+    background: var(--color-surface);
+  }
+
+  .seller-dashboard-page .bg-red-50 {
+    background: rgba(127, 29, 29, .2);
+  }
+
+  .seller-dashboard-page .bg-amber-50 {
+    background: rgba(120, 53, 15, .2);
+  }
+
+  .seller-dashboard-page .border-red-200 {
+    border-color: rgba(248,113,113,.28);
+  }
+
+  .seller-dashboard-page .border-amber-200 {
+    border-color: rgba(251,191,36,.28);
+  }
+}

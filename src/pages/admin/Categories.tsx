@@ -16,6 +16,7 @@ type Category = {
   } | null;
   _count?: {
     products: number;
+    sellers?: number;
   };
   createdAt: string;
   updatedAt: string;
@@ -106,7 +107,7 @@ export default function AdminCategories() {
     const trimmedName = name.trim();
 
     if (trimmedName.length < 2) {
-      push("نام دسته‌بندی باید حداقل ۲ کاراکتر باشد.", "error");
+      push("نام دسته‌بندی فروشگاه باید حداقل ۲ کاراکتر باشد.", "error");
       return;
     }
 
@@ -153,7 +154,7 @@ export default function AdminCategories() {
     const trimmedName = editName.trim();
 
     if (trimmedName.length < 2) {
-      push("نام دسته‌بندی باید حداقل ۲ کاراکتر باشد.", "error");
+      push("نام دسته‌بندی فروشگاه باید حداقل ۲ کاراکتر باشد.", "error");
       return;
     }
 
@@ -221,7 +222,7 @@ export default function AdminCategories() {
 
     if (productCount > 0) {
       push(
-        `این دسته‌بندی ${productCount} محصول دارد و قابل حذف نیست. ابتدا دسته‌بندی محصولات را تغییر دهید.`,
+        `این دسته‌بندی هنوز مورد استفاده است و قابل حذف نیست.`,
         "error",
       );
       return;
@@ -253,12 +254,12 @@ export default function AdminCategories() {
 
   return (
     <>
-      <PageHeader title="دسته‌بندی‌ها" />
+      <PageHeader title="دسته‌بندی فروشگاه‌ها" />
 
       <div className="content">
         <div className="section-head">
           <div>
-            <h2>مدیریت دسته‌بندی‌ها</h2>
+            <h2>مدیریت دسته‌بندی فروشگاه‌ها</h2>
             <div
               style={{
                 marginTop: 4,
@@ -300,7 +301,7 @@ export default function AdminCategories() {
             }}
           >
             <label style={{ display: "grid", gap: 6 }}>
-              <span>نام دسته‌بندی</span>
+              <span>نام دسته‌بندی فروشگاه</span>
 
               <input
                 value={name}
@@ -316,7 +317,7 @@ export default function AdminCategories() {
             </label>
 
             <label style={{ display: "grid", gap: 6 }}>
-              <span>دسته‌بندی والد</span>
+              <span>دسته‌بندی والد فروشگاه</span>
 
               <select
                 value={parentId}
@@ -451,7 +452,7 @@ export default function AdminCategories() {
                   <th>دسته‌بندی</th>
                   <th>Slug</th>
                   <th>والد</th>
-                  <th>محصولات</th>
+                  <th>فروشگاه‌ها</th>
                   <th>وضعیت</th>
                   <th>عملیات</th>
                 </tr>
@@ -541,7 +542,7 @@ export default function AdminCategories() {
                       </td>
 
                       <td>
-                        {category._count?.products ?? 0}
+                        {category._count?.sellers ?? 0}
                       </td>
 
                       <td>
@@ -682,9 +683,8 @@ export default function AdminCategories() {
             lineHeight: 1.8,
           }}
         >
-          <strong>نکته:</strong> دسته‌بندی‌ای که محصول دارد
-          حذف نمی‌شود؛ ابتدا باید دسته‌بندی محصولات آن تغییر
-          کند. غیرفعال کردن دسته‌بندی باعث حذف محصولات نمی‌شود.
+          <strong>نکته:</strong> دسته‌بندی‌ای که فروشگاه دارد
+          حذف نمی‌شود. غیرفعال کردن دسته‌بندی باعث حذف فروشگاه‌ها نمی‌شود.
         </div>
       </div>
     </>

@@ -19,6 +19,7 @@ export default function SellerProfile() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; isActive: boolean }>>([]);
 
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -28,11 +29,14 @@ export default function SellerProfile() {
       return;
     }
 
-    api
-      .get<{ seller: Seller }>(`/api/sellers/${user.seller.id}`)
-      .then((r) => {
-        setSeller(r.seller);
-        setLogoPreview(r.seller.logoUrl || null);
+    Promise.all([
+      api.get<{ seller: Seller }>(`/api/sellers/${user.seller.id}`),
+      api.get<{ categories: Array<{ id: string; name: string; isActive: boolean }> }>("/api/categories"),
+    ])
+      .then(([sellerResult, categoriesResult]) => {
+        setSeller(sellerResult.seller);
+        setLogoPreview(sellerResult.seller.logoUrl || null);
+        setCategories(categoriesResult.categories ?? []);
       })
       .catch((err) => {
         push(
@@ -130,6 +134,7 @@ export default function SellerProfile() {
           contactEmail: seller.contactEmail || undefined,
           contactPhone: seller.contactPhone || undefined,
           address: seller.address || undefined,
+          categoryId: seller.sellerCategoryId ?? seller.sellerCategory?.id ?? null,
         }
       );
 
@@ -429,6 +434,32 @@ export default function SellerProfile() {
                   })
                 }
               />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>دسته‌بندی فروشگاه</label>
+            <select
+              value={seller.sellerCategoryId ?? seller.sellerCategory?.id ?? ""}
+              onChange={(e) =>
+                setSeller({
+                  ...seller,
+                  sellerCategoryId: e.target.value || null,
+                  sellerCategory: categories.find((item) => item.id === e.target.value) ?? null,
+                })
+              }
+            >
+              <option value="">بدون دسته‌بندی</option>
+              {categories
+                .filter((category) => category.isActive !== false)
+                .map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+            </select>
+            <div className="form-help">
+              دسته‌بندی فروشگاه توسط مدیریت پلتفرم تعریف می‌شود.
             </div>
           </div>
 

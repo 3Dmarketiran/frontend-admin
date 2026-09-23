@@ -296,7 +296,7 @@ export default function Subscription() {
   }
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="seller-dashboard-page seller-subscription-page space-y-6 pb-10">
       <PageHeader
         title="اشتراک"
       />
