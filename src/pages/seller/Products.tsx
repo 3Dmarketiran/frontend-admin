@@ -425,7 +425,6 @@ export default function Products() {
     <div className="space-y-6 pb-10">
       <PageHeader
         title="محصولات"
-        description="محصولات فروشگاه را ایجاد، ویرایش، منتشر و مدیریت کنید."
       />
 
       {/* Subscription warning */}
