@@ -29,12 +29,17 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build
         run: npm run build
         env:
-          VITE_API_URL: https://threedmarketiran-backend.onrender.com
+          VITE_API_URL: ${{ vars.API_URL || 'https://threedmarketiran-backend.onrender.com' }}
+          # Vite reads this at build time to bake the correct base path.
+          # Leave the repo variable unset for GitHub Pages project sites
+          # (defaults to "/frontend-admin/"); set it to "/" when this repo
+          # is served from its own custom (sub)domain instead.
+          PUBLIC_BASE_PATH: ${{ vars.PUBLIC_BASE_PATH || '/frontend-admin/' }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
