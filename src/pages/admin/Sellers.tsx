@@ -3,13 +3,12 @@ import { api, ApiError } from "../../lib/api";
 import { PageHeader } from "../../components/Layout";
 import { EmptyState, Modal, Spinner, fmtDate } from "../../components/ui";
 import { useToast } from "../../lib/toast";
-import type { Category, Seller, SubscriptionPlan } from "../../types";
+import type { Seller, SubscriptionPlan } from "../../types";
 
 export default function AdminSellers() {
   const { push } = useToast();
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [activateFor, setActivateFor] = useState<Seller | null>(null);
@@ -19,9 +18,8 @@ export default function AdminSellers() {
     Promise.all([
       api.get<{ sellers: Seller[] }>("/api/sellers"),
       api.get<{ plans: SubscriptionPlan[] }>("/api/subscriptions/plans"),
-      api.get<{ categories: Category[] }>("/api/categories?includeInactive=true"),
     ])
-      .then(([s, p, c]) => { setSellers(s.sellers); setPlans(p.plans); setCategories(c.categories); })
+      .then(([s, p]) => { setSellers(s.sellers); setPlans(p.plans); })
       .finally(() => setLoading(false));
   }
   useEffect(load, []);
@@ -52,7 +50,7 @@ export default function AdminSellers() {
             <table>
               <thead>
                 <tr>
-                  <th>نام فروشگاه</th><th>دسته‌بندی</th><th>ایمیل</th><th>محصولات</th><th>وضعیت اشتراک</th><th>وضعیت حساب</th><th>عملیات</th>
+                  <th>نام فروشگاه</th><th>ایمیل</th><th>محصولات</th><th>وضعیت اشتراک</th><th>وضعیت حساب</th><th>عملیات</th>
                 </tr>
               </thead>
               <tbody>
@@ -61,7 +59,7 @@ export default function AdminSellers() {
                   return (
                     <tr key={s.id}>
                       <td>{s.storeName}<div style={{ fontSize: ".76rem", color: "var(--color-text-muted)" }}>/sellers/{s.slug}</div></td>
-                      <td>{s.sellerCategory?.name ?? "—"}</td><td>{s.user?.email}</td>
+                      <td>{s.user?.email}</td>
                       <td>{s._count?.products ?? 0}</td>
                       <td>{activeSub ? <span className="badge badge-success">فعال تا {fmtDate(activeSub.endDate)}</span> : <span className="badge badge-error">بدون اشتراک فعال</span>}</td>
                       <td>{s.isActive ? <span className="badge badge-success">فعال</span> : <span className="badge badge-muted">غیرفعال</span>}</td>
@@ -78,15 +76,15 @@ export default function AdminSellers() {
         )}
       </div>
 
-      {showCreate && <CreateSellerModal categories={categories} onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} />}
+      {showCreate && <CreateSellerModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} />}
       {activateFor && <ActivateSubscriptionModal seller={activateFor} plans={plans} onClose={() => setActivateFor(null)} onDone={() => { setActivateFor(null); load(); }} />}
     </>
   );
 }
 
-function CreateSellerModal({ categories, onClose, onCreated }: { categories: Category[]; onClose: () => void; onCreated: () => void }) {
+function CreateSellerModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const { push } = useToast();
-  const [form, setForm] = useState({ email: "", password: "", storeName: "", contactEmail: "", contactPhone: "", categoryId: "" });
+  const [form, setForm] = useState({ email: "", password: "", storeName: "", contactEmail: "", contactPhone: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -121,16 +119,6 @@ function CreateSellerModal({ categories, onClose, onCreated }: { categories: Cat
           <label>رمز عبور اولیه</label>
           <input type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
         </div>
-        <div className="form-group">
-          <label>دسته‌بندی فروشگاه</label>
-          <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}>
-            <option value="">بدون دسته‌بندی</option>
-            {categories.filter((c) => c.isActive !== false).map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-
         <div className="form-row">
           <div className="form-group">
             <label>ایمیل تماس (اختیاری)</label>

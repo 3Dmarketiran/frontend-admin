@@ -59,13 +59,13 @@ export default function AdminProducts() {
         ) : (
           <div className="card table-wrap">
             <table>
-              <thead><tr><th>محصول</th><th>فروشنده</th><th>وضعیت</th><th>تاریخ ایجاد</th><th>عملیات</th></tr></thead>
+              <thead><tr><th>محصول</th><th>فروشنده</th><th>دسته‌بندی</th><th>وضعیت</th><th>تاریخ ایجاد</th><th>عملیات</th></tr></thead>
               <tbody>
                 {items.map((p) => (
                   <tr key={p.id}>
                     <td>{p.name}</td>
                     <td>{p.seller?.storeName}</td>
-                    
+                    <td>{p.category?.name ?? "—"}</td>
                     <td><VisibilityBadge v={p.visibility} /></td>
                     <td>{fmtDate(p.createdAt)}</td>
                     <td>{p.visibility !== "HIDDEN" && <button className="btn btn-danger btn-sm" onClick={() => forceHide(p)}>مخفی‌سازی</button>}</td>

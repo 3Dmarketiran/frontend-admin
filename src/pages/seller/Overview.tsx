@@ -286,9 +286,9 @@ export default function SellerOverview() {
                   ? 18
                   : 24,
                 background:
-                  "linear-gradient(135deg, rgba(99,91,255,.12), rgba(139,92,246,.08))",
+                  "linear-gradient(135deg, #ffffff 0%, #f1f1ef 100%)",
                 border:
-                  "1px solid rgba(99,91,255,.14)",
+                  "1px solid #e3e3df",
                 overflow: "hidden",
                 position: "relative",
               }}
@@ -304,7 +304,7 @@ export default function SellerOverview() {
                     fontSize: 12,
                     fontWeight: 700,
                     color:
-                      "#635bff",
+                      "#555752",
                     marginBottom: 7,
                   }}
                 >
@@ -351,7 +351,7 @@ export default function SellerOverview() {
                   borderRadius:
                     "50%",
                   background:
-                    "rgba(99,91,255,.08)",
+                    "rgba(17,18,20,.045)",
                   left: -70,
                   bottom: -110,
                 }}
