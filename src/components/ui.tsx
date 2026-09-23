@@ -185,9 +185,13 @@ export function Modal({
 export function EmptyState({
   icon = "◇",
   text,
+  title,
+  description,
 }: {
   icon?: string;
-  text: string;
+  text?: string;
+  title?: string;
+  description?: string;
 }) {
   return (
     <div className="empty-state">
@@ -197,8 +201,8 @@ export function EmptyState({
         </div>
       </div>
 
-      <h3>چیزی برای نمایش وجود ندارد</h3>
-      <p>{text}</p>
+      <h3>{title ?? "چیزی برای نمایش وجود ندارد"}</h3>
+      <p>{description ?? text}</p>
     </div>
   );
 }

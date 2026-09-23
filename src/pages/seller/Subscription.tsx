@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
-import PageHeader from "../../components/PageHeader";
-import { EmptyState, Spinner } from "../../components/UI";
-import { toast } from "../../components/Toast";
+import { PageHeader } from "../../components/Layout";
+import { EmptyState, Spinner } from "../../components/ui";
+import { useToast } from "../../lib/toast";
 import type {
   Subscription,
   SubscriptionPlan,
@@ -127,6 +127,7 @@ function getPlanLimitLabel(value: number | null, unit = "") {
 
 export default function Subscription() {
   const { user } = useAuth();
+  const { push } = useToast();
 
   const sellerId = user?.seller?.id;
 
@@ -169,10 +170,11 @@ export default function Subscription() {
 
       setPlans(Array.isArray(response) ? response : []);
     } catch (err) {
-      toast.error(
+      push(
         err instanceof ApiError
           ? err.message
           : "دریافت پلن‌ها انجام نشد.",
+        "error",
       );
     } finally {
       setPlansLoading(false);
@@ -189,10 +191,11 @@ export default function Subscription() {
 
       setHistory(Array.isArray(response) ? response : []);
     } catch (err) {
-      toast.error(
+      push(
         err instanceof ApiError
           ? err.message
           : "دریافت تاریخچه اشتراک انجام نشد.",
+        "error",
       );
     } finally {
       setHistoryLoading(false);
@@ -584,9 +587,9 @@ export default function Subscription() {
                     </span>
                   </div>
 
-                  {plan.discountPct > 0 && (
+                  {(plan.discountPct ?? 0) > 0 && (
                     <div className="mt-2 inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                      {formatNumber(plan.discountPct)}٪ تخفیف
+                      {formatNumber(plan.discountPct ?? 0)}٪ تخفیف
                     </div>
                   )}
 

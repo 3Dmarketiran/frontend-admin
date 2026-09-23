@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
-import PageHeader from "../../components/PageHeader";
-import PublishJobStatus from "../../components/PublishJobStatus";
+import { PageHeader } from "../../components/Layout";
+import { PublishJobStatus } from "../../components/PublishJobStatus";
 import {
   EmptyState,
   Spinner,
   VisibilityBadge,
   fmtDate,
-} from "../../components/UI";
-import { toast } from "../../components/Toast";
+} from "../../components/ui";
+import { useToast } from "../../lib/toast";
 import type { Product, PublishJob } from "../../types";
 
 type UsageData = {
@@ -131,6 +131,7 @@ function getSubscriptionMessage(
 
 export default function Products() {
   const { user } = useAuth();
+  const { push } = useToast();
 
   const sellerId = user?.seller?.id;
 
@@ -162,10 +163,11 @@ export default function Products() {
 
       setProducts(Array.isArray(items) ? items : []);
     } catch (error) {
-      toast.error(
+      push(
         error instanceof ApiError
           ? error.message
           : "دریافت محصولات انجام نشد.",
+      "error",
       );
     } finally {
       setLoading(false);
@@ -182,10 +184,11 @@ export default function Products() {
 
       setUsage(response);
     } catch (error) {
-      toast.error(
+      push(
         error instanceof ApiError
           ? error.message
           : "دریافت وضعیت اشتراک انجام نشد.",
+      "error",
       );
     } finally {
       setUsageLoading(false);
@@ -298,8 +301,9 @@ export default function Products() {
 
   async function handlePublish(product: Product) {
     if (!canPublish) {
-      toast.error(
+      push(
         "برای انتشار محصول باید اشتراک فعال داشته باشید و ظرفیت ذخیره‌سازی شما تکمیل نشده باشد.",
+      "error",
       );
       return;
     }
@@ -309,8 +313,9 @@ export default function Products() {
 
       await api.post(`/api/products/${product.id}/publish`);
 
-      toast.success(
+      push(
         "درخواست انتشار محصول ثبت شد. وضعیت انتشار را می‌توانید در همین صفحه مشاهده کنید.",
+      "success",
       );
 
       await Promise.all([
@@ -319,10 +324,11 @@ export default function Products() {
         loadJobs(),
       ]);
     } catch (error) {
-      toast.error(
+      push(
         error instanceof ApiError
           ? error.message
           : "انتشار محصول انجام نشد.",
+      "error",
       );
     } finally {
       setActionId(null);
@@ -335,17 +341,18 @@ export default function Products() {
 
       await api.post(`/api/products/${product.id}/unpublish`);
 
-      toast.success("محصول از حالت انتشار خارج شد.");
+      push("محصول از حالت انتشار خارج شد.", "success");
 
       await Promise.all([
         loadProducts(),
         loadJobs(),
       ]);
     } catch (error) {
-      toast.error(
+      push(
         error instanceof ApiError
           ? error.message
           : "لغو انتشار محصول انجام نشد.",
+      "error",
       );
     } finally {
       setActionId(null);
@@ -364,7 +371,7 @@ export default function Products() {
 
       await api.delete(`/api/products/${product.id}`);
 
-      toast.success("محصول با موفقیت حذف شد.");
+      push("محصول با موفقیت حذف شد.", "success");
 
       await Promise.all([
         loadProducts(),
@@ -372,10 +379,11 @@ export default function Products() {
         loadJobs(),
       ]);
     } catch (error) {
-      toast.error(
+      push(
         error instanceof ApiError
           ? error.message
           : "حذف محصول انجام نشد.",
+      "error",
       );
     } finally {
       setActionId(null);
@@ -657,10 +665,11 @@ export default function Products() {
             if (!canCreateProduct) {
               event.preventDefault();
 
-              toast.error(
+              push(
                 !hasActiveSubscription
                   ? "برای افزودن محصول باید اشتراک فعال داشته باشید."
                   : "ظرفیت تعداد محصولات این پلن تکمیل شده است.",
+              "error",
               );
             }
           }}
@@ -758,7 +767,7 @@ export default function Products() {
                         </h3>
 
                         <VisibilityBadge
-                          visibility={product.visibility}
+                          v={product.visibility}
                         />
                       </div>
 

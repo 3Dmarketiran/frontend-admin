@@ -47,3 +47,23 @@
    صحت کامپایل مطمئن شوید.
 3. مقدار CORS_ORIGIN در بک‌اند باید بعد از مهاجرت دامنه به‌روزرسانی شود تا دامنه‌ی
    جدید frontend-admin و test-site را شامل شود.
+
+## به‌روزرسانی: رفع خطاهای بیلد (GitHub Actions)
+بعد از آپلود روی گیت‌هاب، بیلد با ۱۰ خطای TypeScript fail می‌شد. همه رفع شدن:
+- src/pages/seller/Subscription.tsx و src/pages/seller/Products.tsx: مسیرهای import
+  اشتباه (components/UI, components/Toast, components/PageHeader) با الگوی درست
+  پروژه (components/ui, components/Layout, lib/toast) جایگزین شدند؛ فراخوانی‌های
+  toast.error/success به useToast()/push تبدیل شدند.
+- src/types.ts: فیلد updatedAt به تایپ Product اضافه شد (در بک‌اند از قبل وجود داشت).
+- Subscription.tsx: چک plan.discountPct > 0 برای مقدار nullable اصلاح شد.
+- src/lib/api.ts: متد patch اضافه شد (بک‌اند از قبل روت PATCH /api/categories/:id/status
+  را داشت، فقط کلاینت فاقد این متد بود).
+- src/components/ui.tsx: EmptyState برای پذیرفتن title/description (علاوه بر text) گسترش
+  یافت تا با هر دو الگوی استفاده‌شده در پروژه سازگار باشد.
+- VisibilityBadge و PublishJobStatus: پراپ و نوع import اشتباه اصلاح شد.
+- Tailwind CSS (با preflight غیرفعال) اضافه شد چون این دو صفحه به کلاس‌های Tailwind
+  وابسته بودند ولی پروژه Tailwind نصب نداشت.
+
+نکته: قابلیت «افزودن دسته‌بندی از پنل ادمین» از قبل به‌طور کامل در
+src/pages/admin/Categories.tsx پیاده‌سازی شده بود؛ فقط به‌خاطر خطای api.patch از بالا
+کل بیلد fail می‌شد. با رفع آن خطا، این قابلیت اکنون در دسترس است.

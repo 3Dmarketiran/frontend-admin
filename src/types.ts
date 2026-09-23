@@ -72,6 +72,7 @@ export interface Product {
   images: ProductImage[];
   models: ProductModel[];
   createdAt: string;
+  updatedAt: string;
   publishedAt: string | null;
 }
 

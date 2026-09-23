@@ -1,5 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap");
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root{
  --color-primary:#635bff;--color-secondary:#8b5cf6;--color-accent:#22d3ee;
  --color-background:#f4f6fa;--color-surface:#fff;--color-text:#172033;--color-text-muted:#667085;
