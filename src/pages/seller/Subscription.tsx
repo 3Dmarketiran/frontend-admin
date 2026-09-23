@@ -271,6 +271,7 @@ export default function Subscription() {
       <div className="space-y-6">
         <PageHeader
           title="اشتراک"
+          description="مدیریت پلن و وضعیت اشتراک فروشگاه"
         />
 
         <EmptyState
@@ -286,6 +287,7 @@ export default function Subscription() {
       <div className="space-y-6">
         <PageHeader
           title="اشتراک"
+          description="مدیریت پلن و وضعیت اشتراک فروشگاه"
         />
 
         <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-slate-200 bg-white">
@@ -299,6 +301,7 @@ export default function Subscription() {
     <div className="space-y-6 pb-10">
       <PageHeader
         title="اشتراک"
+        description="وضعیت پلن، ظرفیت فروشگاه و تاریخچه اشتراک را مدیریت و بررسی کنید."
       />
 
       {error && (

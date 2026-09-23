@@ -395,6 +395,7 @@ export default function Products() {
       <div className="space-y-6">
         <PageHeader
           title="محصولات"
+          description="مدیریت محصولات فروشگاه"
         />
 
         <EmptyState
@@ -410,6 +411,7 @@ export default function Products() {
       <div className="space-y-6">
         <PageHeader
           title="محصولات"
+          description="مدیریت محصولات فروشگاه"
         />
 
         <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-slate-200 bg-white">
@@ -423,6 +425,7 @@ export default function Products() {
     <div className="space-y-6 pb-10">
       <PageHeader
         title="محصولات"
+        description="محصولات فروشگاه را ایجاد، ویرایش، منتشر و مدیریت کنید."
       />
 
       {/* Subscription warning */}
