@@ -4,7 +4,7 @@ import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
 import { Spinner } from "../../components/ui";
 import { useToast } from "../../lib/toast";
-import type { Seller } from "../../types";
+import type { Category, Seller } from "../../types";
 
 type LogoUploadResponse = {
   seller: Seller;
@@ -19,7 +19,7 @@ export default function SellerProfile() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Array<{ id: string; name: string; isActive: boolean }>>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -31,7 +31,7 @@ export default function SellerProfile() {
 
     Promise.all([
       api.get<{ seller: Seller }>(`/api/sellers/${user.seller.id}`),
-      api.get<{ categories: Array<{ id: string; name: string; isActive: boolean }> }>("/api/categories"),
+      api.get<{ categories: Category[] }>("/api/categories"),
     ])
       .then(([sellerResult, categoriesResult]) => {
         setSeller(sellerResult.seller);
@@ -134,7 +134,10 @@ export default function SellerProfile() {
           contactEmail: seller.contactEmail || undefined,
           contactPhone: seller.contactPhone || undefined,
           address: seller.address || undefined,
-          categoryId: seller.sellerCategoryId ?? seller.sellerCategory?.id ?? null,
+          categoryId:
+            seller.sellerCategoryId ??
+            seller.sellerCategory?.id ??
+            null,
         }
       );
 
@@ -158,6 +161,7 @@ export default function SellerProfile() {
     return (
       <>
         <PageHeader title="پروفایل فروشگاه" />
+
         <div className="content">
           <Spinner />
         </div>
@@ -318,7 +322,8 @@ export default function SellerProfile() {
                     height: "100%",
                     borderRadius: 999,
                     background: "currentColor",
-                    animation: "logoUploadProgress 1.2s ease-in-out infinite",
+                    animation:
+                      "logoUploadProgress 1.2s ease-in-out infinite",
                   }}
                 />
               </div>
@@ -342,13 +347,13 @@ export default function SellerProfile() {
             }}
           >
             نشانی فروشگاه شما:{" "}
-            <code>/sellers/{seller.slug}</code>
-            {" "}
+            <code>/sellers/{seller.slug}</code>{" "}
             (فقط پس از انتشار اولین محصول و فعال بودن اشتراک، عمومی می‌شود)
           </p>
 
           <div className="form-group">
             <label>نام فروشگاه</label>
+
             <input
               value={seller.storeName}
               onChange={(e) =>
@@ -439,25 +444,40 @@ export default function SellerProfile() {
 
           <div className="form-group">
             <label>دسته‌بندی فروشگاه</label>
+
             <select
-              value={seller.sellerCategoryId ?? seller.sellerCategory?.id ?? ""}
+              value={
+                seller.sellerCategoryId ??
+                seller.sellerCategory?.id ??
+                ""
+              }
               onChange={(e) =>
                 setSeller({
                   ...seller,
                   sellerCategoryId: e.target.value || null,
-                  sellerCategory: categories.find((item) => item.id === e.target.value) ?? null,
+                  sellerCategory:
+                    categories.find(
+                      (item) => item.id === e.target.value
+                    ) ?? null,
                 })
               }
             >
               <option value="">بدون دسته‌بندی</option>
+
               {categories
-                .filter((category) => category.isActive !== false)
+                .filter(
+                  (category) => category.isActive !== false
+                )
                 .map((category) => (
-                  <option key={category.id} value={category.id}>
+                  <option
+                    key={category.id}
+                    value={category.id}
+                  >
                     {category.name}
                   </option>
                 ))}
             </select>
+
             <div className="form-help">
               دسته‌بندی فروشگاه توسط مدیریت پلتفرم تعریف می‌شود.
             </div>
