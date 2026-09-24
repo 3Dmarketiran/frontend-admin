@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API_URL = (import.meta.env.VITE_API_URL || "https://threedmarketiran-backend.onrender.com").replace(/\/+$/, "");
 
 const AUTH_STORAGE_KEY = "platform_session_id";
 
