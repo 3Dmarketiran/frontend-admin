@@ -1,4 +1,4 @@
-const API_URL = (import.meta.env.VITE_API_URL || "https://threedmarketiran-backend.onrender.com").replace(/\/+$/, "");
+const API_URL = import.meta.env.VITE_API_URL || "https://api.3dmarketiran.ir";
 
 const AUTH_STORAGE_KEY = "platform_session_id";
 

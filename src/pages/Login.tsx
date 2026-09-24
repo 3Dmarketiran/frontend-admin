@@ -44,9 +44,7 @@ export default function Login() {
       setError(
         err instanceof ApiError
           ? err.message
-          : err instanceof TypeError
-            ? "ارتباط با سرور برقرار نشد. آدرس API، CORS و وضعیت Backend را بررسی کنید."
-            : "ورود ناموفق بود."
+          : "ورود ناموفق بود."
       );
     } finally {
       setSubmitting(false);

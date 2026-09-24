@@ -282,89 +282,62 @@ a.btn + a.btn {
 /* Seller dashboard neutral palette */
 .seller-profile-editor .form-group input,.seller-profile-editor .form-group textarea{background:#fff}
 .stat-card .value{color:var(--seller-ink)}
+@media(prefers-color-scheme:dark){.app-shell{background:#0d0e0f}.topbar{background:rgba(18,19,20,.92)!important;border-color:#292a2b!important}.card,.btn-outline,.seller-save-bar,.seller-profile-hero{background:#151617!important;border-color:#2b2c2d!important;color:#f4f4f1}.seller-profile-hero__copy p,.seller-save-bar span,.seller-avatar-upload p{color:#a4a5a0}.seller-avatar-upload,.seller-public-mini{background:#1c1d1e;border-color:#303132}.seller-status{background:#1d3329;color:#79c49e}.seller-profile-hero__avatar,.seller-avatar-upload__image,.seller-public-mini__avatar{background:#222324;border-color:#333}.seller-save-bar{color:#f4f4f1}.seller-profile-hero__copy h2,.seller-card-heading h3,.seller-card-heading strong{color:#fff}.form-group input,.form-group textarea,.input-with-icon{background:#171819!important;color:#fff;border-color:#343536}.input-with-icon input,.input-with-icon textarea{color:#fff}.seller-quick-info span{background:#191a1b;border-color:#303132;color:#c9cac6}.btn-outline{color:#f4f4f1!important}.stat-card .value{color:#fff}}
 
-/* ==========================================================
-   FINAL QA / PRODUCTION HARDENING — ADMIN + SELLER
-   ========================================================== */
+/* =========================================================
+   FINAL 3DMARKETIRAN LIGHT / NAVY ADMIN THEME
+   White is the page color; navy is the action/brand color.
+========================================================= */
 :root{
-  --admin-navy:#061224;
-  --admin-navy-2:#0c2340;
-  --admin-navy-3:#102a49;
-  --admin-border:#25496e;
-  --admin-text:#f7fbff;
-  --admin-muted:#b9c9da;
+  --color-primary:#0b1f3a!important;
+  --color-secondary:#16365f!important;
+  --color-background:#ffffff!important;
+  --color-surface:#ffffff!important;
+  --color-text:#0b1f3a!important;
+  --color-text-muted:#5f6f82!important;
+  --color-border:#e3e8ef!important;
+  --color-accent:#dbe7f5!important;
+  --seller-ink:#0b1f3a!important;
+  --seller-soft:#f7f9fc!important;
+  --sb-bg-1:#ffffff!important;
+  --sb-bg-2:#ffffff!important;
+  --sb-text:#52657b!important;
+  --sb-text-hover:#0b1f3a!important;
+  --sb-active-1:#0b1f3a!important;
+  --sb-active-2:#16365f!important;
 }
-html,body,#root{min-width:0;overflow-x:hidden;color-scheme:only light!important}
-
-/* Consistent surfaces across every admin/seller page. */
-.app-shell{background:#061224!important;color:#f7fbff!important}
-.main-area{background:#061224!important}
-.topbar{background:#0c2340!important;border-color:#25496e!important;color:#f7fbff!important}
-.topbar h1,.topbar-kicker,.topbar-user{color:#f7fbff!important}
-.content{color:#f7fbff!important}
-.card,.table-wrap,.modal{background:#0c2340!important;color:#f7fbff!important;border-color:#25496e!important;box-shadow:0 18px 50px rgba(0,0,0,.18)!important}
-.card:hover{border-color:#37658f!important}
-.card p,.form-help,.empty-state,.stat-card .label,.stat-card .sub,.page-header-copy p{color:#b9c9da!important}
-.stat-card .value,.section-head h2,.page-header-copy h1,.page-header-copy .page-header-kicker{color:#fff!important}
-th{background:#102a49!important;color:#b9c9da!important;border-color:#25496e!important}
-td{color:#f7fbff!important;border-color:#25496e!important}
-tr:hover td{background:#102a49!important}
-
-/* Inputs are always dark navy with white text; no light/white text traps. */
-.form-group input,.form-group select,.form-group textarea,
-input,select,textarea{background:#071a30!important;color:#fff!important;border-color:#2b537a!important}
-.form-group input::placeholder,.form-group textarea::placeholder,input::placeholder,textarea::placeholder{color:#829bb5!important}
-.form-group input:focus,.form-group select:focus,.form-group textarea:focus,input:focus,select:focus,textarea:focus{border-color:#7ea4cc!important;box-shadow:0 0 0 4px rgba(126,164,204,.14)!important}
-
-/* Primary actions are light and readable by default. */
-.btn-primary,.btn-dark,.seller-save-button{background:#f7fbff!important;color:#061224!important;border-color:#f7fbff!important;box-shadow:0 8px 24px rgba(0,0,0,.18)!important}
-.btn-primary:hover,.btn-dark:hover,.seller-save-button:hover{background:#dce8f4!important;color:#061224!important}
-.btn-outline{background:#102a49!important;color:#f7fbff!important;border-color:#37658f!important}
-.btn-outline:hover{background:#16385d!important;color:#fff!important;border-color:#5d86ae!important}
-.btn-danger{background:#3b1720!important;color:#ffd7de!important;border-color:#7a3040!important}
-
-/* Tabs and filters need their own selected/unselected contrast. */
-.tabs button{color:#b9c9da!important;background:transparent!important}
-.tabs button.active{color:#fff!important;border-color:#f7fbff!important;background:#102a49!important}
-.tabs button:hover{color:#fff!important;background:#102a49!important}
-select option{background:#0c2340!important;color:#fff!important}
-
-/* Empty states are surfaces, not blank white holes. */
-.empty-state{background:#102a49!important;border:1px dashed #37658f!important;border-radius:18px!important;color:#f7fbff!important}
-.empty-state .icon{color:#dce8f4!important}
-
-/* Product wizard: all eight steps remain legible. */
-.wizard-steps{border-color:#25496e!important}
-.wizard-step{background:#102a49!important;color:#b9c9da!important;border:1px solid #25496e!important}
-.wizard-step.active{background:#f7fbff!important;color:#061224!important;border-color:#f7fbff!important}
-.wizard-step.done{background:#16385d!important;color:#fff!important;border-color:#37658f!important}
-.dropzone{background:#0b2038!important;color:#b9c9da!important;border-color:#37658f!important}
-.dropzone:hover,.dropzone.drag{background:#102a49!important;color:#fff!important;border-color:#8fb7df!important}
-
-/* Seller profile and logo controls. */
-.seller-profile-hero,.seller-editor-card,.seller-public-preview,.seller-profile-tips{background:#0c2340!important;color:#f7fbff!important;border-color:#25496e!important}
-.seller-profile-hero h2,.seller-editor-card h3,.seller-public-preview h3,.seller-profile-tips strong{color:#fff!important}
-.seller-profile-hero p,.seller-profile-hero__copy p,.seller-quick-info,.seller-card-heading span,.seller-profile-tips li{color:#b9c9da!important}
-.seller-profile-hero__avatar,.seller-avatar-upload__image,.seller-public-mini__avatar{background:#102a49!important;border-color:#37658f!important}
-.seller-profile-hero__avatar img,.seller-avatar-upload__image img,.seller-public-mini__avatar img{object-fit:contain!important}
-
-/* Header logo is always visible, independent of inherited brand colors. */
-.sidebar .brand-mark,.topbar-brand-mark{display:grid!important;place-items:center!important;flex:0 0 auto!important;width:40px!important;height:40px!important;border-radius:12px!important;background:#f7fbff!important;color:#061224!important;border:1px solid #fff!important}
-.topbar-brand-mark{width:38px!important;height:38px!important}
-.sidebar .brand-mark svg,.topbar-brand-mark svg{color:#061224!important}
-.sidebar .brand{color:#fff!important}
-
-/* Mobile drawer remains interactive above the page. */
-.mobile-menu-backdrop{background:rgba(0,0,0,.58)!important;z-index:55!important}
-.sidebar{z-index:60!important}
-
-/* Accessibility and keyboard navigation. */
-a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #8fb7df!important;outline-offset:3px}
-
-@media(max-width:800px){
-  .content{padding:18px 14px!important}
-  .grid-4,.grid-3{gap:12px}
-  .sidebar{background:#07182d!important}
+html,body,#root{background:#fff!important;color:#0b1f3a!important}
+body{background:#fff!important;color:#0b1f3a!important}
+.app-shell{background:#f7f9fc!important}
+.sidebar{background:#fff!important;color:#52657b!important;border-inline-end:1px solid #e3e8ef!important;box-shadow:8px 0 30px rgba(11,31,58,.05)!important}
+.sidebar .brand,.sidebar .brand span{color:#0b1f3a!important}
+.sidebar nav a{color:#52657b!important}
+.sidebar nav a:hover{background:#eef3f9!important;color:#0b1f3a!important}
+.sidebar nav a.active{background:#0b1f3a!important;color:#fff!important;box-shadow:0 8px 20px rgba(11,31,58,.15)!important}
+.sidebar .user-box{background:#f7f9fc!important;border-color:#e3e8ef!important;color:#52657b!important}
+.main-area{background:#f7f9fc!important}
+.topbar{background:rgba(255,255,255,.96)!important;border-bottom:1px solid #e3e8ef!important;color:#0b1f3a!important}
+.card,.table-wrap,.modal,.login-card,.seller-save-bar,.seller-profile-hero,.seller-avatar-upload,.seller-public-mini{background:#fff!important;border-color:#e3e8ef!important;color:#0b1f3a!important}
+.card:hover{border-color:#cbd6e3!important}
+.btn-primary,.btn-dark,.seller-save-button{background:#0b1f3a!important;color:#fff!important;border-color:#0b1f3a!important}
+.btn-primary:hover,.btn-dark:hover,.seller-save-button:hover{background:#16365f!important;color:#fff!important}
+.btn-outline{background:#fff!important;color:#0b1f3a!important;border-color:#d6dee8!important}
+.btn-outline:hover{background:#eef3f9!important;color:#0b1f3a!important;border-color:#b9c8d9!important}
+.form-group input,.form-group select,.form-group textarea,.input-with-icon{background:#fff!important;color:#0b1f3a!important;border-color:#d6dee8!important}
+.form-group input::placeholder,.form-group textarea::placeholder{color:#8a98a9!important}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus,.input-with-icon:focus-within{border-color:#7890aa!important;box-shadow:0 0 0 4px rgba(11,31,58,.08)!important}
+th,td{border-color:#e3e8ef!important}th{background:#f7f9fc!important;color:#5f6f82!important}tr:hover td{background:#f8fafc!important}
+.tabs{border-color:#e3e8ef!important}.tabs button{color:#5f6f82!important}.tabs button.active{color:#0b1f3a!important;border-color:#0b1f3a!important}
+.dropzone{background:#f8fafc!important;border-color:#d6dee8!important;color:#5f6f82!important}.dropzone:hover,.dropzone.drag{background:#eef3f9!important;border-color:#0b1f3a!important;color:#0b1f3a!important}
+.wizard-step{background:#eef2f6!important;color:#5f6f82!important}.wizard-step.active{background:#0b1f3a!important;color:#fff!important}.wizard-step.done{background:#dbe7f5!important;color:#0b1f3a!important}
+.stat-card-icon{background:#0b1f3a!important}.stat-card .value{color:#0b1f3a!important}.stat-card-glow{background:#dbe7f5!important}
+.login-shell{background:#fff!important}.login-card{box-shadow:0 24px 70px rgba(11,31,58,.10)!important}
+.badge-info{background:#dbe7f5!important;color:#0b1f3a!important}
+.modal-backdrop{background:rgba(11,31,58,.42)!important}
+/* Keep accessibility and text contrast intact under every OS color preference. */
+@media(prefers-color-scheme:dark){
+  html,body,#root,.app-shell,.main-area,.login-shell{background:#fff!important;color:#0b1f3a!important}
+  .sidebar,.topbar,.card,.table-wrap,.modal,.login-card,.btn-outline,.seller-save-bar,.seller-profile-hero,.seller-avatar-upload,.seller-public-mini,.form-group input,.form-group select,.form-group textarea,.input-with-icon{background:#fff!important;color:#0b1f3a!important;border-color:#e3e8ef!important}
+  .sidebar nav a{color:#52657b!important}.sidebar nav a.active{background:#0b1f3a!important;color:#fff!important}
+  .btn-primary,.btn-dark{background:#0b1f3a!important;color:#fff!important}
 }
-
-.error-boundary{min-height:100vh;display:grid;place-items:center;padding:24px;background:#061224;color:#fff}.error-boundary__card{width:min(520px,100%);padding:32px;border:1px solid #25496e;border-radius:24px;background:#0c2340;text-align:center;box-shadow:0 30px 90px rgba(0,0,0,.28)}.error-boundary__icon{width:48px;height:48px;margin:0 auto 16px;display:grid;place-items:center;border-radius:16px;background:#f7fbff;color:#061224;font-weight:950;font-size:1.4rem}.error-boundary__card h1{margin:0 0 10px;color:#fff}.error-boundary__card p{margin:0 0 18px;color:#b9c9da;line-height:1.9}.error-boundary__card code{display:block;margin:0 0 18px;padding:10px;border-radius:12px;background:#071a30;color:#b9c9da;direction:ltr;text-align:left;overflow:auto}

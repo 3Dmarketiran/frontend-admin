@@ -272,14 +272,14 @@ export default function SellerOverview() {
     <>
       <PageHeader title="نمای کلی فروشگاه" />
 
-      <div className="content seller-overview-page">
+      <div className="content">
         {loading ? (
           <Spinner />
         ) : (
           <>
             {/* Welcome / Hero */}
             <div
-              className="card seller-overview-hero"
+              className="card"
               style={{
                 marginBottom: 16,
                 padding: isMobile

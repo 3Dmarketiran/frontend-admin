@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { api, ApiError, API_URL } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
 import { Spinner } from "../../components/ui";
@@ -7,12 +7,6 @@ import { useToast } from "../../lib/toast";
 import type { Seller } from "../../types";
 
 type LogoUploadResponse = { seller: Seller };
-
-function publicLogoUrl(seller: Seller | null) {
-  if (!seller?.logoUrl) return null;
-  const base = API_URL.replace(/\/+$/, "");
-  return `${base}/api/sellers/by-slug/${encodeURIComponent(seller.slug)}/logo`;
-}
 
 function Icon({ name }: { name: "store" | "phone" | "mail" | "pin" | "image" }) {
   const paths = {
@@ -38,7 +32,7 @@ export default function SellerProfile() {
   useEffect(() => {
     if (!user?.seller?.id) { setLoading(false); return; }
     api.get<{ seller: Seller }>(`/api/sellers/${user.seller.id}`)
-      .then((r) => { setSeller(r.seller); setLogoPreview(publicLogoUrl(r.seller)); })
+      .then((r) => { setSeller(r.seller); setLogoPreview(r.seller.logoUrl || null); })
       .catch((err) => push(err instanceof ApiError ? err.message : "خطا در دریافت اطلاعات فروشگاه.", "error"))
       .finally(() => setLoading(false));
   }, [user, push]);
@@ -56,10 +50,10 @@ export default function SellerProfile() {
     try {
       const formData = new FormData(); formData.append("logo", file);
       const result = await api.upload<LogoUploadResponse>(`/api/sellers/${seller.id}/logo`, formData);
-      setSeller(result.seller); revokePreview(localPreview); setLogoPreview(publicLogoUrl(result.seller));
+      setSeller(result.seller); revokePreview(localPreview); setLogoPreview(result.seller.logoUrl || null);
       push("لوگوی فروشگاه با موفقیت آپلود شد.", "success");
     } catch (err) {
-      revokePreview(localPreview); setLogoPreview(publicLogoUrl(seller));
+      revokePreview(localPreview); setLogoPreview(seller.logoUrl || null);
       push(err instanceof ApiError ? err.message : "خطا در آپلود لوگو.", "error");
     } finally { setUploadingLogo(false); }
   }
@@ -75,7 +69,7 @@ export default function SellerProfile() {
         contactPhone: seller.contactPhone || undefined,
         address: seller.address || undefined,
       });
-      setSeller(result.seller); setLogoPreview(publicLogoUrl(result.seller));
+      setSeller(result.seller); setLogoPreview(result.seller.logoUrl || null);
       push("پروفایل فروشگاه ذخیره شد.", "success");
     } catch (err) {
       push(err instanceof ApiError ? err.message : "خطا در ذخیره پروفایل.", "error");

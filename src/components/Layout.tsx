@@ -55,12 +55,7 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
       {menuOpen && <button className="mobile-menu-backdrop" aria-label="بستن منو" onClick={() => setMenuOpen(false)} />}
       <aside className={`sidebar${menuOpen ? " open" : ""}`}>
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-              <path d="m4 7.5 8 4.5 8-4.5M12 12v9" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-            </svg>
-          </span>
+          <span className="brand-mark" aria-hidden="true">3D</span>
           <span>3DMarketiran</span>
         </div>
         <div className="sidebar-heading">{area === "admin" ? "مدیریت پلتفرم" : "مدیریت فروشگاه"}</div>
@@ -88,12 +83,6 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
       <div className="main-area">
         <header className="topbar">
           <div className="topbar__left">
-            <span className="topbar-brand-mark" aria-hidden="true">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-                <path d="m4 7.5 8 4.5 8-4.5M12 12v9" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-              </svg>
-            </span>
             <button className="btn btn-outline mobile-menu-button" style={{ display: "none" }} onClick={() => setMenuOpen(true)} aria-label="باز کردن منو">☰</button>
             <div>
               <div className="topbar-kicker">{area === "admin" ? "3DMarketiran" : "پنل فروشنده"}</div>

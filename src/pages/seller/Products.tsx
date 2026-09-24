@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { api, ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
@@ -423,7 +422,7 @@ export default function Products() {
   }
 
   return (
-    <div className="space-y-6 pb-10 seller-products-page">
+    <div className="space-y-6 pb-10">
       <PageHeader
         title="محصولات"
         description="محصولات فروشگاه را ایجاد، ویرایش، منتشر و مدیریت کنید."
@@ -449,12 +448,12 @@ export default function Products() {
               </div>
             </div>
 
-            <Link
-              to="/seller/subscription"
+            <a
+              href="/subscription"
               className="inline-flex shrink-0 items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-current/10 transition hover:bg-slate-50"
             >
               مشاهده اشتراک
-            </Link>
+            </a>
           </div>
         </div>
       )}
@@ -659,8 +658,8 @@ export default function Products() {
           </p>
         </div>
 
-        <Link
-          to="/seller/products/new"
+        <a
+          href="/products/new"
           aria-disabled={!canCreateProduct}
           onClick={(event) => {
             if (!canCreateProduct) {
@@ -681,7 +680,7 @@ export default function Products() {
           }`}
         >
           + افزودن محصول
-        </Link>
+        </a>
       </section>
 
       {/* Filters */}
@@ -779,12 +778,6 @@ export default function Products() {
                       )}
 
                       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
-                        {product.price != null && (
-                          <span className="seller-product-price">
-                            قیمت: <strong>{new Intl.NumberFormat("fa-IR").format(product.price)} تومان</strong>
-                          </span>
-                        )}
-
                         {product.category?.name && (
                           <span>
                             دسته‌بندی:{" "}
@@ -806,12 +799,12 @@ export default function Products() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link
-                        to={`/seller/products/${product.id}/edit`}
+                      <a
+                        href={`/products/${product.id}/edit`}
                         className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                       >
                         ویرایش
-                      </Link>
+                      </a>
 
                       {product.visibility === "PUBLISHED" ? (
                         <button

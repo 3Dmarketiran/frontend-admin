@@ -164,17 +164,11 @@ export default function Subscription() {
 
   const loadPlans = useCallback(async () => {
     try {
-      const response = await api.get<{ plans?: SubscriptionPlan[] } | SubscriptionPlan[]>(
+      const response = await api.get<SubscriptionPlan[]>(
         "/api/subscriptions/plans",
       );
 
-      const nextPlans = Array.isArray(response)
-        ? response
-        : Array.isArray(response?.plans)
-          ? response.plans
-          : [];
-
-      setPlans(nextPlans);
+      setPlans(Array.isArray(response) ? response : []);
     } catch (err) {
       push(
         err instanceof ApiError
@@ -304,7 +298,7 @@ export default function Subscription() {
   }
 
   return (
-    <div className="space-y-6 pb-10 seller-subscription-page">
+    <div className="space-y-6 pb-10">
       <PageHeader
         title="اشتراک"
         description="وضعیت پلن، ظرفیت فروشگاه و تاریخچه اشتراک را مدیریت و بررسی کنید."
