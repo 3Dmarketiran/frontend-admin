@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
@@ -448,12 +449,12 @@ export default function Products() {
               </div>
             </div>
 
-            <a
-              href="/seller/subscription"
+            <Link
+              to="/seller/subscription"
               className="inline-flex shrink-0 items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-current/10 transition hover:bg-slate-50"
             >
               مشاهده اشتراک
-            </a>
+            </Link>
           </div>
         </div>
       )}
@@ -658,8 +659,8 @@ export default function Products() {
           </p>
         </div>
 
-        <a
-          href="/seller/products/new"
+        <Link
+          to="/seller/products/new"
           aria-disabled={!canCreateProduct}
           onClick={(event) => {
             if (!canCreateProduct) {
@@ -680,7 +681,7 @@ export default function Products() {
           }`}
         >
           + افزودن محصول
-        </a>
+        </Link>
       </section>
 
       {/* Filters */}
@@ -805,12 +806,12 @@ export default function Products() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      <a
-                        href={`/seller/products/${product.id}/edit`}
+                      <Link
+                        to={`/seller/products/${product.id}/edit`}
                         className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                       >
                         ویرایش
-                      </a>
+                      </Link>
 
                       {product.visibility === "PUBLISHED" ? (
                         <button

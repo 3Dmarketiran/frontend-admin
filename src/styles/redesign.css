@@ -128,3 +128,44 @@ th{background:#102a49!important;color:#fff!important}td{color:#d9e5f2!important;
 
 /* Seller products/subscription page polish */
 .seller-products-page,.seller-subscription-page{max-width:1500px;margin-inline:auto}.seller-products-page h2,.seller-subscription-page h2{letter-spacing:-.02em}.seller-products-page .rounded-2xl,.seller-subscription-page .rounded-2xl{border-radius:20px!important}.seller-products-page [class~="shadow-sm"],.seller-subscription-page [class~="shadow-sm"]{box-shadow:0 14px 40px rgba(0,0,0,.16)!important}.seller-products-page .seller-product-price{display:inline-flex;align-items:center;gap:4px}.seller-subscription-page .grid>div{transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}.seller-subscription-page .grid>div:hover{transform:translateY(-2px);border-color:#31577f!important;box-shadow:0 18px 45px rgba(0,0,0,.2)!important}
+
+/* ==========================================================
+   FINAL CONTRAST PATCH — seller + super-admin
+   ========================================================== */
+.btn-secondary{
+  background:#f7fbff!important;
+  color:#061224!important;
+  border:1px solid #f7fbff!important;
+  box-shadow:none!important;
+}
+.btn-secondary:hover{background:#dfeaf5!important;color:#061224!important}
+.stat-card .value{color:#fff!important}
+.stat-card .label,.stat-card .sub{color:#9eb0c5!important}
+.usage-title,.usage-number{color:#fff!important}
+.usage-number span,.usage-subtitle,.usage-footer{color:#9eb0c5!important}
+.usage-unlimited{background:#102a49!important;color:#d5b46a!important}
+.empty-state{background:#0c2340!important;border:1px dashed #2a4b70!important;color:#d9e5f2!important;border-radius:20px}
+.empty-state h3{color:#fff!important}.empty-state p{color:#9eb0c5!important}
+.section-header h3,.section-header strong{color:#fff!important}.section-header .muted,.muted{color:#9eb0c5!important}
+.seller-overview-page .seller-overview-hero{background:linear-gradient(135deg,#0c2340 0%,#102a49 100%)!important;border-color:#1c3a5d!important;color:#fff!important}
+.seller-overview-page .seller-overview-hero div[style*="color: #555752"]{color:#d9e5f2!important}
+.seller-overview-page .seller-overview-hero p{color:#b9c9da!important}
+.seller-overview-page .seller-overview-hero h2{color:#fff!important}
+.seller-overview-page .card .muted{color:#9eb0c5!important}
+.seller-overview-page .card strong{color:#fff!important}
+.seller-overview-page .table-wrap{background:#0c2340!important}
+.seller-overview-page .table-wrap th{background:#102a49!important;color:#fff!important}
+.seller-overview-page .table-wrap td{color:#d9e5f2!important}
+.seller-overview-page .table-wrap td .font-medium{color:#fff!important}
+
+/* Legacy Tailwind utilities that can still create black-on-navy or navy-on-black. */
+.app-shell [class~="text-black"],
+.app-shell [class~="text-gray-900"],
+.app-shell [class~="text-gray-800"],
+.app-shell [class~="text-gray-700"],
+.app-shell [class~="text-gray-600"]{color:#d9e5f2!important}
+.app-shell [class~="bg-black"],
+.app-shell [class~="bg-gray-900"],
+.app-shell [class~="bg-gray-800"]{background:#0c2340!important;color:#fff!important}
+.app-shell [class~="border-gray-200"],
+.app-shell [class~="border-gray-300"]{border-color:#1c3a5d!important}
