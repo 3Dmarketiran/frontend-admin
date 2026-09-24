@@ -298,7 +298,7 @@ export default function Subscription() {
   }
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-10 seller-subscription-page">
       <PageHeader
         title="اشتراک"
         description="وضعیت پلن، ظرفیت فروشگاه و تاریخچه اشتراک را مدیریت و بررسی کنید."

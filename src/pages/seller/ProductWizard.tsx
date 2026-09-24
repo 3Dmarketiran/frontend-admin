@@ -61,6 +61,7 @@ export default function ProductWizard() {
     useState(false);
 
   const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
   const [shortDescription, setShortDescription] =
     useState("");
   const [fullDescription, setFullDescription] =
@@ -149,6 +150,8 @@ export default function ProductWizard() {
     setProductId(p.id);
 
     setName(p.name);
+
+    setPrice(p.price == null ? "" : String(p.price));
 
     setShortDescription(
       p.shortDescription ?? ""
@@ -253,8 +256,15 @@ export default function ProductWizard() {
     setSaving(true);
 
     try {
+      const numericPrice = price.trim() === "" ? undefined : Number(price);
+      if (numericPrice !== undefined && (!Number.isFinite(numericPrice) || numericPrice < 0)) {
+        push("قیمت باید یک عدد معتبر و صفر یا بزرگ‌تر باشد.", "error");
+        return;
+      }
+
       const payload = {
         name: name.trim(),
+        price: numericPrice,
 
         shortDescription:
           shortDescription.trim() ||
@@ -482,6 +492,20 @@ export default function ProductWizard() {
                     )
                   }
                 />
+              </div>
+
+              <div className="form-group">
+                <label>قیمت محصول (تومان)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step="1"
+                  inputMode="numeric"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="مثلاً ۲۵۰۰۰۰۰۰"
+                />
+                <div className="form-help">این قیمت در کارت محصول و صفحه محصول برای مشتری نمایش داده می‌شود.</div>
               </div>
 
               <div className="form-group">
