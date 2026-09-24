@@ -48,6 +48,24 @@ export default function ProductWizard() {
   const [product, setProduct] =
     useState<Product | null>(null);
 
+  const [loading, setLoading] = useState(Boolean(routeId));
+const [saving, setSaving] = useState(false);
+
+const [name, setName] = useState("");
+const [shortDescription, setShortDescription] = useState("");
+const [fullDescription, setFullDescription] = useState("");
+const [tags, setTags] = useState("");
+
+const [width, setWidth] = useState("");
+const [height, setHeight] = useState("");
+const [depth, setDepth] = useState("");
+
+const [unit, setUnit] =
+  useState<DimensionUnit>("CM");
+
+const [publishNow, setPublishNow] =
+  useState(true);
+
   useEffect(() => {
     if (!routeId) return;
 
