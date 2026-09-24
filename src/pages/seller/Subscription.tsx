@@ -164,11 +164,17 @@ export default function Subscription() {
 
   const loadPlans = useCallback(async () => {
     try {
-      const response = await api.get<SubscriptionPlan[]>(
+      const response = await api.get<{ plans?: SubscriptionPlan[] } | SubscriptionPlan[]>(
         "/api/subscriptions/plans",
       );
 
-      setPlans(Array.isArray(response) ? response : []);
+      const nextPlans = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.plans)
+          ? response.plans
+          : [];
+
+      setPlans(nextPlans);
     } catch (err) {
       push(
         err instanceof ApiError

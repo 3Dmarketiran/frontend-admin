@@ -169,3 +169,37 @@ th{background:#102a49!important;color:#fff!important}td{color:#d9e5f2!important;
 .app-shell [class~="bg-gray-800"]{background:#0c2340!important;color:#fff!important}
 .app-shell [class~="border-gray-200"],
 .app-shell [class~="border-gray-300"]{border-color:#1c3a5d!important}
+
+
+/* ==========================================================
+   FINAL MICRO FIXES — ADMIN CONTRAST / FORMS / BRAND
+   ========================================================== */
+.topbar-brand-mark{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:#0c2340!important;color:#fff!important;border:1px solid #2a4f75!important;flex:none}
+.brand-mark{background:#0c2340!important;color:#fff!important;border-color:#2a4f75!important}
+.mobile-menu-button{background:#f7fbff!important;color:#061224!important;border-color:#f7fbff!important}
+.seller-profile-editor .form-group input,.seller-profile-editor .form-group select,.seller-profile-editor .form-group textarea,.seller-profile-editor input,.seller-profile-editor select,.seller-profile-editor textarea{background:#091a30!important;color:#fff!important;border-color:#2d5278!important}
+.seller-profile-editor input::placeholder,.seller-profile-editor textarea::placeholder{color:#718aa4!important}
+.seller-profile-editor .seller-save-button,.seller-profile-editor .btn-dark,.seller-profile-editor button[type="submit"]{background:#f7fbff!important;color:#061224!important;border-color:#f7fbff!important}
+.seller-profile-editor .seller-avatar-upload .btn-outline{background:#0c2340!important;color:#fff!important;border-color:#315a83!important}
+.seller-profile-editor .seller-avatar-upload .btn-outline:hover{background:#102a49!important;color:#fff!important}
+/* Native/Tailwind controls across seller + super-admin */
+.app-shell select,.app-shell input,.app-shell textarea{color-scheme:dark;background:#091a30!important;color:#fff!important;border-color:#2d5278!important}
+.app-shell select option{background:#0c2340!important;color:#fff!important}
+.app-shell input::placeholder,.app-shell textarea::placeholder{color:#718aa4!important}
+.app-shell .bg-white,.app-shell .bg-slate-50,.app-shell .bg-slate-100{background:#0c2340!important;color:#f7fbff!important}
+.app-shell button.bg-white,.app-shell button.bg-slate-50,.app-shell button.bg-slate-100{background:#102a49!important;color:#fff!important;border-color:#315a83!important}
+.app-shell [class~="bg-black"],.app-shell [class~="bg-gray-900"],.app-shell [class~="bg-gray-800"]{background:#0c2340!important;color:#fff!important}
+.app-shell [class~="text-black"],.app-shell [class~="text-gray-900"],.app-shell [class~="text-gray-800"],.app-shell [class~="text-gray-700"],.app-shell [class~="text-gray-600"]{color:#d9e5f2!important}
+/* Filters/tabs must stay readable on navy */
+.app-shell .tabs button,.app-shell button[class*="border-slate"],.app-shell button[class*="bg-slate"]{color:#fff!important}
+.app-shell .tabs button.active{background:#f7fbff!important;color:#061224!important}
+/* Add/new/save actions should always be visible before hover */
+.app-shell .btn-primary,.app-shell .btn-dark,.app-shell button[type="submit"],.app-shell a.btn-primary{background:#f7fbff!important;color:#061224!important;border-color:#f7fbff!important}
+.app-shell .btn-primary:hover,.app-shell .btn-dark:hover,.app-shell button[type="submit"]:hover,.app-shell a.btn-primary:hover{background:#dfeaf5!important;color:#061224!important}
+/* Product wizard stepper */
+.app-shell .product-wizard-step,.app-shell [class*="step"]{border-color:#2d5278!important}
+/* Empty cards use a second navy rather than white */
+.app-shell .empty-state,.app-shell [class*="empty"]{background:#102a49!important;color:#fff!important;border-color:#2d5278!important}
+.app-shell .empty-state p,.app-shell [class*="empty"] .muted{color:#b9c9da!important}
+/* Prevent icon boxes from becoming white-on-white */
+.app-shell svg{color:inherit}
