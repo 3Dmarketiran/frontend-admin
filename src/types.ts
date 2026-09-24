@@ -30,7 +30,8 @@ export interface Category {
   isActive: boolean;
   parentId: string | null;
   _count?: {
-    products: number;
+    products?: number;
+    sellers?: number;
   };
 }
 
@@ -85,6 +86,7 @@ export interface Seller {
   contactEmail: string | null;
   contactPhone: string | null;
   address: string | null;
+  category?: Category | null;
   socialLinks: Record<string, string> | null;
   isActive: boolean;
   user?: {
@@ -93,7 +95,8 @@ export interface Seller {
     createdAt: string;
   };
   _count?: {
-    products: number;
+    products?: number;
+    sellers?: number;
   };
   subscriptions?: Subscription[];
 }

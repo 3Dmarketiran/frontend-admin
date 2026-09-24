@@ -67,6 +67,17 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
             </NavLink>
           ))}
         </nav>
+        {area === "seller" && user.seller && (
+          <a
+            className="public-store-link"
+            href={`https://3dmarketiran.github.io/test/#/sellers/${encodeURIComponent(user.seller.slug)}`}
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            <span className="public-store-link__icon"><SidebarIcon name="external" /></span>
+            <span><small>پروفایل عمومی</small><strong>مشاهده فروشگاه در سایت</strong></span>
+          </a>
+        )}
         {area === "seller" && (
           <NavLink to="/seller/subscription" className="subscription-chip" style={{ textDecoration: "none" }}>
             <small>وضعیت اشتراک</small>
@@ -116,6 +127,7 @@ function SidebarIcon({ name }: { name: string }) {
     list: <><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r=".8" fill="currentColor"/><circle cx="4" cy="12" r=".8" fill="currentColor"/><circle cx="4" cy="18" r=".8" fill="currentColor"/></>,
     pulse: <><path d="M3 12h4l2-5 4 10 2-5h6"/></>,
     plus: <><path d="M12 5v14M5 12h14"/></>,
+    external: <><path d="M14 5h5v5"/><path d="M13 11 19 5"/><path d="M19 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></>,
   };
   return <svg {...common}>{paths[name] ?? paths.grid}</svg>;
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
@@ -422,7 +423,7 @@ export default function Products() {
   }
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="products-page space-y-6 pb-10">
       <PageHeader
         title="محصولات"
         description="محصولات فروشگاه را ایجاد، ویرایش، منتشر و مدیریت کنید."
@@ -658,8 +659,8 @@ export default function Products() {
           </p>
         </div>
 
-        <a
-          href="/products/new"
+        <Link
+          to="/seller/products/new"
           aria-disabled={!canCreateProduct}
           onClick={(event) => {
             if (!canCreateProduct) {
@@ -680,7 +681,7 @@ export default function Products() {
           }`}
         >
           + افزودن محصول
-        </a>
+        </Link>
       </section>
 
       {/* Filters */}
@@ -778,15 +779,6 @@ export default function Products() {
                       )}
 
                       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
-                        {product.category?.name && (
-                          <span>
-                            دسته‌بندی:{" "}
-                            <span className="font-medium text-slate-700">
-                              {product.category.name}
-                            </span>
-                          </span>
-                        )}
-
                         {product.updatedAt && (
                           <span>
                             آخرین تغییر:{" "}
@@ -799,12 +791,12 @@ export default function Products() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      <a
-                        href={`/products/${product.id}/edit`}
+                      <Link
+                        to={`/seller/products/${product.id}/edit`}
                         className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                       >
                         ویرایش
-                      </a>
+                      </Link>
 
                       {product.visibility === "PUBLISHED" ? (
                         <button

@@ -4,7 +4,7 @@ import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
 import { Spinner } from "../../components/ui";
 import { useToast } from "../../lib/toast";
-import type { Seller } from "../../types";
+import type { Category, Seller } from "../../types";
 
 type LogoUploadResponse = { seller: Seller };
 
@@ -27,12 +27,22 @@ export default function SellerProfile() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryId, setCategoryId] = useState("");
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!user?.seller?.id) { setLoading(false); return; }
-    api.get<{ seller: Seller }>(`/api/sellers/${user.seller.id}`)
-      .then((r) => { setSeller(r.seller); setLogoPreview(r.seller.logoUrl || null); })
+    Promise.all([
+      api.get<{ seller: Seller }>(`/api/sellers/${user.seller.id}`),
+      api.get<{ categories: Category[] }>("/api/categories"),
+    ])
+      .then(([sellerResponse, categoryResponse]) => {
+        setSeller(sellerResponse.seller);
+        setLogoPreview(sellerResponse.seller.logoUrl || null);
+        setCategories(categoryResponse.categories.filter((item) => item.isActive !== false));
+        setCategoryId(sellerResponse.seller.category?.id || "");
+      })
       .catch((err) => push(err instanceof ApiError ? err.message : "خطا در دریافت اطلاعات فروشگاه.", "error"))
       .finally(() => setLoading(false));
   }, [user, push]);
@@ -68,8 +78,11 @@ export default function SellerProfile() {
         contactEmail: seller.contactEmail || undefined,
         contactPhone: seller.contactPhone || undefined,
         address: seller.address || undefined,
+        categoryId: categoryId || null,
       });
-      setSeller(result.seller); setLogoPreview(result.seller.logoUrl || null);
+      setSeller(result.seller);
+      setCategoryId(result.seller.category?.id || categoryId);
+      setLogoPreview(result.seller.logoUrl || null);
       push("پروفایل فروشگاه ذخیره شد.", "success");
     } catch (err) {
       push(err instanceof ApiError ? err.message : "خطا در ذخیره پروفایل.", "error");
@@ -116,6 +129,7 @@ export default function SellerProfile() {
                   <div><strong>عکس پروفایل / لوگوی فروشگاه</strong><p>JPG، PNG یا WEBP — حداکثر ۵ مگابایت</p><input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { const f=e.target.files?.[0]; if(f) void uploadLogo(f); e.target.value=""; }} /><button type="button" className="btn btn-outline" onClick={() => logoInputRef.current?.click()}>انتخاب تصویر</button></div>
                 </div>
                 <div className="form-group"><label>نام فروشگاه</label><input value={seller.storeName} onChange={(e)=>setSeller({...seller,storeName:e.target.value})} required maxLength={120}/></div>
+                <div className="form-group"><label>دسته‌بندی فروشگاه</label><select value={categoryId} onChange={(e)=>setCategoryId(e.target.value)}><option value="">بدون دسته‌بندی</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select><div className="form-help">این دسته‌بندی مربوط به خود فروشگاه است و در سایت عمومی کنار فروشگاه نمایش داده می‌شود.</div></div>
                 <div className="form-group"><label>بیو / معرفی فروشگاه</label><textarea rows={6} value={seller.description ?? ""} onChange={(e)=>setSeller({...seller,description:e.target.value})} maxLength={2000} placeholder="مثلاً: فروش تخصصی مبلمان مدرن، ارسال به سراسر کشور و مشاوره قبل از خرید..."/><div className="form-help">همین متن در پروفایل عمومی فروشگاه به مشتری نمایش داده می‌شود.</div></div>
               </section>
 

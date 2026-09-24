@@ -15,7 +15,7 @@ type Category = {
     name: string;
   } | null;
   _count?: {
-    products: number;
+    sellers: number;
   };
   createdAt: string;
   updatedAt: string;
@@ -217,11 +217,11 @@ export default function AdminCategories() {
   }
 
   async function deleteCategory(category: Category) {
-    const productCount = category._count?.products ?? 0;
+    const sellerCount = category._count?.sellers ?? 0;
 
-    if (productCount > 0) {
+    if (sellerCount > 0) {
       push(
-        `این دسته‌بندی ${productCount} محصول دارد و قابل حذف نیست. ابتدا دسته‌بندی محصولات را تغییر دهید.`,
+        `این دسته‌بندی ${sellerCount} فروشگاه دارد و قابل حذف نیست. ابتدا دسته‌بندی فروشگاه‌ها را تغییر دهید.`,
         "error",
       );
       return;
@@ -541,7 +541,7 @@ export default function AdminCategories() {
                       </td>
 
                       <td>
-                        {category._count?.products ?? 0}
+                        {category._count?.sellers ?? 0}
                       </td>
 
                       <td>
