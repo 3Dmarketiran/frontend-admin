@@ -49,22 +49,17 @@ export default function ProductWizard() {
     useState<Product | null>(null);
 
   const [loading, setLoading] = useState(Boolean(routeId));
-const [saving, setSaving] = useState(false);
-
-const [name, setName] = useState("");
-const [shortDescription, setShortDescription] = useState("");
-const [fullDescription, setFullDescription] = useState("");
-const [tags, setTags] = useState("");
-
-const [width, setWidth] = useState("");
-const [height, setHeight] = useState("");
-const [depth, setDepth] = useState("");
-
-const [unit, setUnit] =
-  useState<DimensionUnit>("CM");
-
-const [publishNow, setPublishNow] =
-  useState(true);
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState("");
+  const [shortDescription, setShortDescription] = useState("");
+  const [fullDescription, setFullDescription] = useState("");
+  const [tags, setTags] = useState("");
+  const [price, setPrice] = useState("");
+  const [width, setWidth] = useState("");
+  const [height, setHeight] = useState("");
+  const [depth, setDepth] = useState("");
+  const [unit, setUnit] = useState<DimensionUnit>("CM");
+  const [publishNow, setPublishNow] = useState(true);
 
   useEffect(() => {
     if (!routeId) return;
@@ -116,6 +111,7 @@ const [publishNow, setPublishNow] =
     );
 
     setTags(p.tags ?? "");
+    setPrice(p.price == null ? "" : String(p.price));
 
     setUnit(
       p.inputUnit ?? "CM"
@@ -219,6 +215,9 @@ const [publishNow, setPublishNow] =
 
         tags:
           tags.trim() || undefined,
+
+        price:
+          price.trim() === "" ? undefined : Number(price),
       };
 
       const r = productId
@@ -400,9 +399,7 @@ const [publishNow, setPublishNow] =
           ))}
         </div>
 
-        <div
-          className="card"
-          style={{ maxWidth: 720 }}
+        <div className="card wizard-card"
         >
           {step === 0 && (
             <div>
@@ -460,19 +457,13 @@ const [publishNow, setPublishNow] =
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>
-                    برچسب‌ها (با کاما جدا کنید)
-                  </label>
-
-                  <input
-                    value={tags}
-                    onChange={(e) =>
-                      setTags(
-                        e.target.value
-                      )
-                    }
-                    placeholder="مبلمان, چوبی, مدرن"
-                  />
+                  <label>برچسب‌ها (با کاما جدا کنید)</label>
+                  <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="مبلمان, چوبی, مدرن" />
+                </div>
+                <div className="form-group">
+                  <label>قیمت محصول</label>
+                  <input type="number" min={0} step="any" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="مثلاً 12500000" inputMode="decimal" />
+                  <div className="form-help">قیمت به تومان وارد می‌شود. خالی گذاشتن یعنی قیمت برای محصول نمایش داده نشود.</div>
                 </div>
               </div>
 

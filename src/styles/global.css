@@ -341,3 +341,14 @@ th,td{border-color:#e3e8ef!important}th{background:#f7f9fc!important;color:#5f6f
   .sidebar nav a{color:#52657b!important}.sidebar nav a.active{background:#0b1f3a!important;color:#fff!important}
   .btn-primary,.btn-dark{background:#0b1f3a!important;color:#fff!important}
 }
+
+
+/* FINAL QA — navy, spacing and full-width product wizard */
+:root{--color-primary:#0b1f3a!important;--color-secondary:#16365f!important;--color-text:#0b1f3a!important;--color-text-muted:#5b6b7f!important;--color-border:#dfe6ee!important}
+.sidebar .brand,.sidebar .brand *{color:#fff!important}.sidebar .brand-mark{background:#fff!important;color:#0b1f3a!important}
+.app-shell .content{padding-inline:20px!important}.app-shell .products-page{width:100%!important;max-width:none!important;margin-inline:0!important}
+.wizard-card{max-width:none!important;width:100%!important}.wizard-steps{display:grid!important;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px!important;overflow:visible!important;padding-bottom:0!important;width:100%!important}.wizard-step{min-width:0!important;width:100%!important;white-space:normal!important;line-height:1.5!important}
+.product-card-price{color:#0b1f3a!important;font-weight:900!important;font-size:.84rem;margin-top:7px}
+.seller-theme-control{display:grid;grid-template-columns:54px 1fr;gap:10px;align-items:center}.seller-theme-control input[type=color]{width:54px!important;height:46px!important;padding:4px!important;cursor:pointer}
+@media(max-width:1050px){.wizard-steps{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:700px){.app-shell .content{padding-inline:14px!important}.wizard-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}

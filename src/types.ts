@@ -56,6 +56,7 @@ export interface Product {
   shortDescription: string | null;
   fullDescription: string | null;
   tags: string | null;
+  price: number | null;
   categoryId: string | null;
   category?: Category | null;
   seller?: {
@@ -83,6 +84,7 @@ export interface Seller {
   storeName: string;
   description: string | null;
   logoUrl: string | null;
+  themeColor?: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
   address: string | null;
