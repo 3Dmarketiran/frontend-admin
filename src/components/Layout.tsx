@@ -101,6 +101,13 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
               <h1>{area === "admin" ? "داشبورد مدیریت" : "داشبورد فروشگاه"}</h1>
             </div>
           </div>
+          <div className="topbar-search" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8"/>
+              <path d="m16 16 4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            <span>جستجو در پنل...</span>
+          </div>
           <div className="topbar__right">
             <span className="topbar-user">{displayName}</span>
             <span className="badge badge-info">{roleLabel(user.role)}</span>

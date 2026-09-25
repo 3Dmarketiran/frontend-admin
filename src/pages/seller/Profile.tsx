@@ -29,7 +29,7 @@ export default function SellerProfile() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
-  const [themeColor, setThemeColor] = useState("#0b1f3a");
+  const [themeColor, setThemeColor] = useState("#2e6fce");
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function SellerProfile() {
         setLogoPreview(sellerResponse.seller.logoUrl || null);
         setCategories(categoryResponse.categories.filter((item) => item.isActive !== false));
         setCategoryId(sellerResponse.seller.category?.id || "");
-        setThemeColor(sellerResponse.seller.themeColor || "#0b1f3a");
+        setThemeColor(sellerResponse.seller.themeColor || "#2e6fce");
       })
       .catch((err) => push(err instanceof ApiError ? err.message : "خطا در دریافت اطلاعات فروشگاه.", "error"))
       .finally(() => setLoading(false));
