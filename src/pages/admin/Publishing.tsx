@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { api } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
+import { useToast } from "../../lib/toast";
 import { PageHeader } from "../../components/Layout";
 import { EmptyState, JobStatusBadge, Modal, Spinner, fmtDateTime } from "../../components/ui";
 import type { PublishJob } from "../../types";
 
 export default function AdminPublishing() {
+  const { push } = useToast();
   const [jobs, setJobs] = useState<PublishJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<PublishJob | null>(null);
@@ -20,8 +22,12 @@ export default function AdminPublishing() {
   }, []);
 
   async function openDetail(job: PublishJob) {
-    const full = await api.get<{ job: PublishJob }>(`/api/publishing/jobs/${job.id}`);
-    setDetail(full.job);
+    try {
+      const full = await api.get<{ job: PublishJob }>(`/api/publishing/jobs/${job.id}`);
+      setDetail(full.job);
+    } catch (err) {
+      push(err instanceof ApiError ? err.message : "خطا در دریافت جزئیات انتشار.", "error");
+    }
   }
 
   return (

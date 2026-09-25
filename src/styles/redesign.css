@@ -181,3 +181,141 @@ th{background:#f1f5f9!important;color:var(--ui-navy)!important}td{color:#253b55!
   .public-store-link{margin-inline:8px!important}
   .app-shell .page-header-copy h1{font-size:1.25rem!important}
 }
+
+/* QA fixes: tighter dashboard viewport behavior on phones. */
+@media(max-width:800px){
+  .app-shell .topbar{padding:12px 14px!important;gap:10px;min-width:0}
+  .app-shell .topbar__left{min-width:0;flex:1}
+  .app-shell .topbar__left>div:last-child{min-width:0}
+  .app-shell .topbar__left h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:1.08rem!important}
+  .app-shell .topbar-user{display:none!important}
+  .app-shell .topbar__right{flex:none}
+  .app-shell .content{padding-inline:12px!important;max-width:100vw;overflow-x:hidden}
+  .app-shell .page-header-wrap{padding-inline:12px!important}
+  .app-shell .card,.app-shell .table-wrap{max-width:100%;min-width:0}
+  .app-shell .section-head{gap:10px;flex-wrap:wrap}
+  .app-shell .form-row{grid-template-columns:1fr}
+}
+@media(max-width:520px){
+  .app-shell .topbar-kicker{font-size:.62rem!important}
+  .app-shell .topbar__right .badge{display:none}
+  .app-shell .content{padding-inline:10px!important}
+  .app-shell .page-header-wrap{padding-inline:10px!important}
+}
+
+/* ================================================================
+   ADMIN / SELLER — GLASS + SOFT NEUMORPHISM MOBILE SYSTEM
+   ================================================================ */
+:root{
+  --glass-bg:rgba(255,255,255,.64);
+  --glass-border:rgba(255,255,255,.84);
+  --neo-shadow:10px 10px 25px rgba(11,31,58,.075),-8px -8px 22px rgba(255,255,255,.95);
+  --neo-inset:inset 5px 5px 12px rgba(11,31,58,.055),inset -5px -5px 12px rgba(255,255,255,.9);
+}
+html,body,#root{background:linear-gradient(145deg,#edf3f8,#f8fafc)!important}
+.app-shell{background:transparent!important}
+.app-shell .main-area{background:transparent!important}
+.app-shell .topbar{
+  background:rgba(248,250,252,.68)!important;
+  border-bottom:1px solid rgba(255,255,255,.82)!important;
+  box-shadow:0 10px 28px rgba(11,31,58,.055)!important;
+  backdrop-filter:blur(22px) saturate(145%);
+  -webkit-backdrop-filter:blur(22px) saturate(145%);
+}
+.app-shell .content .card,.app-shell .content .rounded-2xl,.app-shell .content .seller-profile-hero,.app-shell .content .seller-editor-card,.app-shell .content .seller-avatar-upload,.app-shell .content .seller-public-mini,.app-shell .content .seller-save-bar{
+  background:linear-gradient(145deg,rgba(255,255,255,.86),rgba(241,246,250,.72))!important;
+  border:1px solid rgba(255,255,255,.9)!important;
+  box-shadow:var(--neo-shadow)!important;
+  backdrop-filter:blur(16px) saturate(125%);
+  -webkit-backdrop-filter:blur(16px) saturate(125%);
+}
+.app-shell .content input,.app-shell .content select,.app-shell .content textarea{
+  background:rgba(255,255,255,.58)!important;
+  border-color:rgba(255,255,255,.9)!important;
+  box-shadow:var(--neo-inset)!important;
+}
+.app-shell .content input:focus,.app-shell .content select:focus,.app-shell .content textarea:focus{box-shadow:inset 3px 3px 8px rgba(11,31,58,.04),0 0 0 4px rgba(36,84,135,.09)!important}
+.app-shell .sidebar{
+  box-shadow:10px 0 36px rgba(11,31,58,.16)!important;
+}
+.app-shell .sidebar nav a{border-radius:14px!important;margin:3px 8px!important}
+.app-shell .sidebar nav a.active{box-shadow:var(--neo-shadow)!important}
+.app-shell .public-store-link{box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 8px 18px rgba(0,0,0,.08)!important;backdrop-filter:blur(12px)}
+.app-shell .btn{border-radius:14px!important}
+.app-shell .btn-outline{background:rgba(255,255,255,.48)!important;border-color:rgba(255,255,255,.86)!important;box-shadow:var(--neo-shadow)!important}
+.app-shell .btn-primary,.app-shell .bg-slate-900{box-shadow:6px 8px 18px rgba(11,31,58,.16)!important}
+.app-shell .badge{border-radius:999px!important}
+.app-shell .table-wrap{border:1px solid rgba(255,255,255,.85)!important;border-radius:18px!important;box-shadow:var(--neo-shadow)!important;overflow:auto;background:rgba(255,255,255,.5)!important}
+.app-shell table{background:transparent!important}
+.app-shell th{background:rgba(239,245,250,.72)!important}
+.app-shell .form-group label{font-weight:850!important}
+.app-shell .page-header-wrap{background:transparent!important}
+
+@media(max-width:800px){
+  .app-shell{min-height:100svh!important}
+  .app-shell .main-area{width:100%!important;min-width:0!important}
+  .app-shell .topbar{min-height:58px!important;padding:9px 10px!important;border-radius:0 0 18px 18px!important}
+  .app-shell .mobile-menu-button{display:grid!important;place-items:center!important;width:42px!important;height:42px!important;padding:0!important;border-radius:14px!important;box-shadow:var(--neo-shadow)!important}
+  .app-shell .topbar__left{gap:8px!important}
+  .app-shell .topbar__left h1{font-size:1rem!important}
+  .app-shell .page-header-wrap{padding:18px 12px 8px!important}
+  .app-shell .page-header-copy h1{font-size:1.22rem!important;line-height:1.45!important}
+  .app-shell .page-header-copy p{font-size:.72rem!important;line-height:1.8!important}
+  .app-shell .content{padding:8px 10px 26px!important;width:100%!important;box-sizing:border-box!important;overflow-x:hidden!important}
+  .app-shell .content .grid,.app-shell .content .grid-4,.app-shell .content .grid-3{grid-template-columns:1fr!important;gap:11px!important}
+  .app-shell .content .grid-2{grid-template-columns:1fr!important}
+  .app-shell .content .card,.app-shell .content .rounded-2xl{border-radius:19px!important}
+  .app-shell .content .card{padding:14px!important}
+  .app-shell .form-row{grid-template-columns:1fr!important;gap:10px!important}
+  .app-shell .form-group{min-width:0!important}
+  .app-shell .section-head{align-items:flex-start!important;gap:10px!important;flex-wrap:wrap!important}
+  .app-shell .section-head .btn{width:auto!important}
+  .app-shell .table-wrap{margin-inline:0!important;max-width:100%!important;border-radius:16px!important}
+  .app-shell table{min-width:640px!important}
+  .app-shell .sidebar{width:min(84vw,310px)!important;box-shadow:14px 0 42px rgba(11,31,58,.24)!important}
+  .app-shell .mobile-menu-backdrop{backdrop-filter:blur(5px)!important;background:rgba(4,16,30,.35)!important}
+}
+@media(max-width:520px){
+  .app-shell .content{padding-inline:8px!important}
+  .app-shell .page-header-wrap{padding-inline:9px!important}
+  .app-shell .topbar-kicker{display:none!important}
+  .app-shell .topbar__left h1{font-size:.92rem!important}
+  .app-shell .topbar__right .badge{display:none!important}
+  .app-shell .content .card{padding:12px!important}
+  .app-shell .content .btn{min-height:42px!important}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+
+/* ================================================================
+   DESKTOP PARITY — GLASSMORPHISM + SOFT NEUMORPHISM
+   Same visual language as mobile; desktop keeps its full navigation/layout.
+   ================================================================ */
+@media(min-width:801px){
+  html,body,#root{background:linear-gradient(135deg,#edf3f8 0%,#f8fafc 52%,#eaf1f7 100%)!important}
+  .app-shell{background:transparent!important}
+  .app-shell .main-area{background:transparent!important}
+  .app-shell .topbar{
+    background:rgba(248,250,253,.66)!important;
+    border-bottom:1px solid rgba(255,255,255,.9)!important;
+    box-shadow:0 12px 32px rgba(11,31,58,.06),inset 0 1px 0 rgba(255,255,255,.95)!important;
+    backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);
+  }
+  .app-shell .content .card,.app-shell .content .rounded-2xl,.app-shell .content .seller-profile-hero,.app-shell .content .seller-editor-card,.app-shell .content .seller-avatar-upload,.app-shell .content .seller-public-mini,.app-shell .content .seller-save-bar{
+    background:linear-gradient(145deg,rgba(255,255,255,.84),rgba(241,246,250,.68))!important;
+    border:1px solid rgba(255,255,255,.92)!important;
+    box-shadow:var(--neo-shadow)!important;
+    backdrop-filter:blur(18px) saturate(130%);-webkit-backdrop-filter:blur(18px) saturate(130%);
+  }
+  .app-shell .content .card:hover{box-shadow:14px 20px 38px rgba(11,31,58,.09),-9px -9px 25px rgba(255,255,255,.94)!important}
+  .app-shell .content input,.app-shell .content select,.app-shell .content textarea{
+    background:rgba(255,255,255,.58)!important;border-color:rgba(255,255,255,.9)!important;box-shadow:var(--neo-inset)!important
+  }
+  .app-shell .sidebar{box-shadow:12px 0 38px rgba(11,31,58,.13)!important}
+  .app-shell .sidebar nav a{border-radius:14px!important;margin:3px 8px!important;transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+  .app-shell .sidebar nav a:hover{box-shadow:var(--neo-shadow)!important;transform:translateX(2px)}
+  .app-shell .sidebar nav a.active{box-shadow:var(--neo-shadow)!important}
+  .app-shell .public-store-link{backdrop-filter:blur(14px);box-shadow:0 8px 20px rgba(11,31,58,.10),inset 0 1px 0 rgba(255,255,255,.16)!important}
+  .app-shell .btn-outline{background:rgba(255,255,255,.5)!important;border-color:rgba(255,255,255,.9)!important;box-shadow:var(--neo-shadow)!important}
+  .app-shell .table-wrap{background:rgba(255,255,255,.48)!important;border:1px solid rgba(255,255,255,.9)!important;box-shadow:var(--neo-shadow)!important;backdrop-filter:blur(16px)}
+  .app-shell th{background:rgba(239,245,250,.66)!important}
+}

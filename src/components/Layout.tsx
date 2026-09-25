@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+import { PUBLIC_SITE_URL } from "../lib/config";
 
 const ADMIN_NAV = [
   { to: "/admin", label: "نمای کلی", end: true, icon: "grid" },
@@ -70,7 +71,7 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
         {area === "seller" && user.seller && (
           <a
             className="public-store-link"
-            href={`https://3dmarketiran.github.io/test/#/sellers/${encodeURIComponent(user.seller.slug)}`}
+            href={`${PUBLIC_SITE_URL}/#/sellers/${encodeURIComponent(user.seller.slug)}`}
             target="_blank"
             rel="noreferrer noopener"
           >
