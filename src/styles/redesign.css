@@ -319,3 +319,44 @@ html,body,#root{background:linear-gradient(145deg,#edf3f8,#f8fafc)!important}
   .app-shell .table-wrap{background:rgba(255,255,255,.48)!important;border:1px solid rgba(255,255,255,.9)!important;box-shadow:var(--neo-shadow)!important;backdrop-filter:blur(16px)}
   .app-shell th{background:rgba(239,245,250,.66)!important}
 }
+
+/* V9 — pure neumorphism: remove glassmorphism completely */
+:root{
+  --neo-bg:#e8edf3;
+  --neo-surface:#e8edf3;
+  --neo-dark:rgba(163,174,188,.42);
+  --neo-light:rgba(255,255,255,.96);
+  --neo-raised:8px 8px 18px var(--neo-dark),-8px -8px 18px var(--neo-light);
+  --neo-raised-sm:5px 5px 12px var(--neo-dark),-5px -5px 12px var(--neo-light);
+  --neo-raised-lg:14px 14px 30px rgba(163,174,188,.38),-14px -14px 30px rgba(255,255,255,.98);
+  --neo-inset:inset 5px 5px 12px rgba(163,174,188,.34),inset -5px -5px 12px rgba(255,255,255,.94);
+  --neo-inset-sm:inset 3px 3px 8px rgba(163,174,188,.30),inset -3px -3px 8px rgba(255,255,255,.94);
+}
+html,body,#root{background:var(--neo-bg)!important}
+body{background:linear-gradient(145deg,#edf1f5 0%,#e4e9ef 100%)!important}
+.admin-shell,.admin-topbar,.content-card,.card,.surface,.panel,.seller-profile-editor,.table-wrap,.modal,.dialog,.toast,.sidebar,.mobile-backdrop{
+  background:var(--neo-surface)!important;
+  border:0!important;
+  box-shadow:var(--neo-raised)!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+.admin-topbar{box-shadow:var(--neo-raised-lg)!important}
+button,.btn,.button,.icon-button,.public-store-link,.nav-item,.sidebar button{
+  background:var(--neo-surface)!important;
+  border:0!important;
+  box-shadow:var(--neo-raised-sm)!important;
+  transition:transform .18s ease,box-shadow .18s ease!important;
+}
+button:hover,.btn:hover,.button:hover,.icon-button:hover,.public-store-link:hover,.nav-item:hover,.sidebar button:hover{transform:translateY(-1px);box-shadow:6px 6px 14px var(--neo-dark),-6px -6px 14px var(--neo-light)!important}
+button:active,.btn:active,.button:active,.icon-button:active,.nav-item:active{transform:translateY(1px);box-shadow:var(--neo-inset)!important}
+input,select,textarea{background:var(--neo-surface)!important;border:0!important;box-shadow:var(--neo-inset)!important;outline:none!important}
+input:focus,select:focus,textarea:focus{box-shadow:var(--neo-inset),0 0 0 2px rgba(30,63,101,.12)!important}
+.nav-item.active{box-shadow:var(--neo-inset)!important}
+svg{filter:drop-shadow(1px 2px 1px rgba(163,174,188,.25)) drop-shadow(-1px -1px 1px rgba(255,255,255,.7));}
+.logo,.brand-mark,.avatar,.seller-avatar{box-shadow:var(--neo-raised-sm)!important;border:0!important}
+@media(max-width:800px){
+ .admin-topbar,.content-card,.card,.surface,.panel,.sidebar{box-shadow:var(--neo-raised-sm)!important;border-radius:18px!important}
+ button,.btn,.button,.icon-button{min-height:42px}
+}
+@media(prefers-reduced-motion:reduce){button,.btn,.button,.icon-button,.nav-item{transition:none!important}}
