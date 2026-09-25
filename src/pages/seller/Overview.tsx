@@ -184,6 +184,8 @@ export default function SellerOverview() {
       });
   }, [sellerId]);
 
+  const pinnedProducts = products.filter((p) => p.isPinned);
+
   const published = products.filter(
     (p) => p.visibility === "PUBLISHED"
   ).length;
@@ -255,6 +257,7 @@ export default function SellerOverview() {
     hasSubscription &&
     !productLimitReached;
 
+  // Storefront curation is intentionally separate from ordering/checkout.
   const recentProducts =
     [...products]
       .sort(

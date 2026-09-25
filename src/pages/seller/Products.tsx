@@ -360,6 +360,32 @@ export default function Products() {
     }
   }
 
+  async function handlePin(product: Product) {
+    setActionId(product.id);
+    try {
+      const response = await api.post<{ product: Product }>(
+        `/api/products/${product.id}/pin`,
+        { pinned: !product.isPinned },
+      );
+      setProducts((current) =>
+        current.map((item) =>
+          item.id === product.id ? { ...item, ...response.product } : item,
+        ),
+      );
+      push(
+        product.isPinned ? "محصول از محصولات منتخب برداشته شد." : "محصول به محصولات منتخب فروشگاه پین شد.",
+        "success",
+      );
+    } catch (error) {
+      push(
+        error instanceof ApiError ? error.message : "تغییر وضعیت پین محصول انجام نشد.",
+        "error",
+      );
+    } finally {
+      setActionId(null);
+    }
+  }
+
   async function handleDelete(product: Product) {
     const confirmed = window.confirm(
       `آیا از حذف «${product.name}» مطمئن هستید؟ این عملیات قابل بازگشت نیست.`,
@@ -791,6 +817,20 @@ export default function Products() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void handlePin(product)}
+                        title="حداکثر ۳ محصول می‌تواند پین شود"
+                        className={`inline-flex items-center justify-center rounded-xl border px-3.5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                          product.isPinned
+                            ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                            : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {product.isPinned ? "📌 پین‌شده" : "📌 پین کردن"}
+                      </button>
+
                       <Link
                         to={`/seller/products/${product.id}/edit`}
                         className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"

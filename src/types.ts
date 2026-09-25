@@ -57,6 +57,8 @@ export interface Product {
   fullDescription: string | null;
   tags: string | null;
   price: number | null;
+  isPinned: boolean;
+  pinOrder: number | null;
   categoryId: string | null;
   category?: Category | null;
   seller?: {
