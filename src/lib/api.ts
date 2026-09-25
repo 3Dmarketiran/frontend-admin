@@ -117,23 +117,23 @@ async function request<T>(
     headers.set("Authorization", `Bearer ${sessionId}`);
   }
 
-  let res: Response;
+  let res: Response | null = null;
+  let lastError: unknown = null;
+  const maxAttempts = path === "/api/auth/login" ? 4 : 2;
 
-  try {
-    res = await fetch(`${API_URL}${path}`, {
-      ...init,
-      credentials: "include",
-      headers,
-    });
-  } catch (error) {
-    if (error instanceof TypeError) {
-      throw new ApiError(
-        0,
-        "ارتباط با سرور برقرار نشد. اتصال اینترنت یا آدرس API را بررسی کنید."
-      );
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      res = await fetch(`${API_URL}${path}`, { ...init, credentials: "include", headers });
+      if (![502, 503, 504].includes(res.status) || attempt === maxAttempts - 1) break;
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxAttempts - 1) break;
     }
+    await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+  }
 
-    throw error;
+  if (!res) {
+    throw new ApiError(0, "سرور موقتاً در دسترس نبود؛ اتصال دوباره در حال انجام است. اگر ادامه داشت، آدرس API را بررسی کنید.");
   }
 
   const data = await parseResponse(res);

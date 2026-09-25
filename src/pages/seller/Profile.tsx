@@ -100,7 +100,7 @@ export default function SellerProfile() {
       <div className="content seller-profile-editor">
         <div className="seller-profile-hero card" style={{"--seller-theme": themeColor} as React.CSSProperties}>
           <div className="seller-profile-hero__avatar">
-            {logoPreview ? <img src={logoPreview} alt={seller.storeName} /> : <Icon name="store" />}
+            {logoPreview ? <img src={logoPreview} alt={seller.storeName} onError={(e) => { e.currentTarget.style.display="none"; }} /> : <Icon name="store" />}
           </div>
           <div className="seller-profile-hero__copy">
             <span className="seller-eyebrow">صفحه عمومی فروشگاه</span>
@@ -133,7 +133,7 @@ export default function SellerProfile() {
                 </div>
                 <div className="form-group"><label>نام فروشگاه</label><input value={seller.storeName} onChange={(e)=>setSeller({...seller,storeName:e.target.value})} required maxLength={120}/></div>
                 <div className="form-group"><label>دسته‌بندی فروشگاه</label><select value={categoryId} onChange={(e)=>setCategoryId(e.target.value)}><option value="">بدون دسته‌بندی</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select><div className="form-help">این دسته‌بندی مربوط به خود فروشگاه است و در سایت عمومی کنار فروشگاه نمایش داده می‌شود.</div></div>
-                <div className="form-group seller-theme-field"><label>رنگ تم فروشگاه</label><div className="seller-theme-control"><input type="color" value={themeColor} onChange={(e)=>setThemeColor(e.target.value)} aria-label="رنگ تم فروشگاه" /><input value={themeColor} onChange={(e)=>setThemeColor(e.target.value)} pattern="^#[0-9A-Fa-f]{6}$" maxLength={7} aria-label="کد رنگ" /></div><div className="form-help">این رنگ برای هدر و بخش معرفی فروشگاه در سایت عمومی استفاده می‌شود.</div></div>
+                <div className="form-group seller-theme-field"><label>رنگ تم فروشگاه</label><div className="seller-theme-control"><span className="seller-theme-swatch" style={{backgroundColor: themeColor}} aria-hidden="true" /><input type="color" value={themeColor} onChange={(e)=>setThemeColor(e.target.value)} aria-label="رنگ تم فروشگاه" /><input value={themeColor} onChange={(e)=>setThemeColor(e.target.value)} pattern="^#[0-9A-Fa-f]{6}$" maxLength={7} aria-label="کد رنگ" /></div><div className="form-help">این رنگ برای هدر و بخش معرفی فروشگاه در سایت عمومی استفاده می‌شود.</div></div>
                 <div className="form-group"><label>بیو / معرفی فروشگاه</label><textarea rows={6} value={seller.description ?? ""} onChange={(e)=>setSeller({...seller,description:e.target.value})} maxLength={2000} placeholder="مثلاً: فروش تخصصی مبلمان مدرن، ارسال به سراسر کشور و مشاوره قبل از خرید..."/><div className="form-help">همین متن در پروفایل عمومی فروشگاه به مشتری نمایش داده می‌شود.</div></div>
               </section>
 

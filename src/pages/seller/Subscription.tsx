@@ -164,11 +164,12 @@ export default function Subscription() {
 
   const loadPlans = useCallback(async () => {
     try {
-      const response = await api.get<SubscriptionPlan[]>(
+      const response = await api.get<{ plans?: SubscriptionPlan[] } | SubscriptionPlan[]>(
         "/api/subscriptions/plans",
       );
 
-      setPlans(Array.isArray(response) ? response : []);
+      const items = Array.isArray(response) ? response : (response.plans ?? []);
+      setPlans(items);
     } catch (err) {
       push(
         err instanceof ApiError
@@ -185,11 +186,12 @@ export default function Subscription() {
     if (!sellerId) return;
 
     try {
-      const response = await api.get<SubscriptionResponse[]>(
+      const response = await api.get<{ subscriptions?: SubscriptionResponse[] } | SubscriptionResponse[]>(
         `/api/subscriptions/seller/${sellerId}`,
       );
 
-      setHistory(Array.isArray(response) ? response : []);
+      const items = Array.isArray(response) ? response : (response.subscriptions ?? []);
+      setHistory(items);
     } catch (err) {
       push(
         err instanceof ApiError

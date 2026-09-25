@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
@@ -135,6 +135,9 @@ export default function Products() {
   const { push } = useToast();
 
   const sellerId = user?.seller?.id;
+  const [searchParams] = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
+  const [search, setSearch] = useState(initialSearch);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [jobs, setJobs] = useState<PublishJob[]>([]);
@@ -240,12 +243,13 @@ export default function Products() {
   }, [sellerId, loadJobs, loadUsage]);
 
   const filteredProducts = useMemo(() => {
-    if (filter === "ALL") return products;
-
-    return products.filter(
-      (product) => product.visibility === filter,
-    );
-  }, [products, filter]);
+    const q = search.trim().toLocaleLowerCase("fa");
+    return products.filter((product) => {
+      const matchesFilter = filter === "ALL" || product.visibility === filter;
+      const haystack = `${product.name} ${product.slug}`.toLocaleLowerCase("fa");
+      return matchesFilter && (!q || haystack.includes(q));
+    });
+  }, [products, filter, search]);
 
   const productPercent = usage
     ? getUsagePercent(
@@ -454,6 +458,7 @@ export default function Products() {
         title="محصولات"
         description="محصولات فروشگاه را ایجاد، ویرایش، منتشر و مدیریت کنید."
       />
+      <div className="panel-inline-search"><input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="جستجوی محصول یا شناسه..." aria-label="جستجوی محصولات" /></div>
 
       {/* Subscription warning */}
       {subscriptionMessage && (
@@ -755,14 +760,18 @@ export default function Products() {
       {filteredProducts.length === 0 ? (
         <EmptyState
           title={
-            products.length === 0
-              ? "هنوز محصولی ندارید"
-              : "محصولی در این فیلتر وجود ندارد"
+            filteredProducts.length === 0 && search.trim()
+              ? "نتیجه‌ای برای جستجوی شما پیدا نشد"
+              : products.length === 0
+                ? "هنوز محصولی ندارید"
+                : "محصولی در این فیلتر وجود ندارد"
           }
           description={
-            products.length === 0
-              ? "از دکمه افزودن محصول برای ساخت اولین محصول فروشگاه استفاده کنید."
-              : "فیلتر دیگری را انتخاب کنید تا محصولات بیشتری نمایش داده شوند."
+            filteredProducts.length === 0 && search.trim()
+              ? "عبارت جستجو را تغییر دهید یا جستجو را پاک کنید."
+              : products.length === 0
+                ? "از دکمه افزودن محصول برای ساخت اولین محصول فروشگاه استفاده کنید."
+                : "فیلتر دیگری را انتخاب کنید تا محصولات بیشتری نمایش داده شوند."
           }
         />
       ) : (

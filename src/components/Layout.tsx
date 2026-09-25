@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { NavLink, Outlet, Navigate } from "react-router-dom";
+import { NavLink, Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { PUBLIC_SITE_URL } from "../lib/config";
 
@@ -30,8 +30,11 @@ const SELLER_NAV = [
 export default function Layout({ area }: { area: "admin" | "seller" }) {
   const { user, loading, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  useEffect(() => setMenuOpen(false), [area]);
+  useEffect(() => { setMenuOpen(false); setGlobalSearch(""); }, [area, location.pathname]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -101,13 +104,13 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
               <h1>{area === "admin" ? "داشبورد مدیریت" : "داشبورد فروشگاه"}</h1>
             </div>
           </div>
-          <div className="topbar-search" aria-hidden="true">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <form className="topbar-search topbar-search--active" role="search" onSubmit={(event) => { event.preventDefault(); const q=globalSearch.trim(); if (!q) return; const target = area === "admin" ? `/admin/products?search=${encodeURIComponent(q)}` : `/seller/products?search=${encodeURIComponent(q)}`; navigate(target); }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8"/>
               <path d="m16 16 4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
-            <span>جستجو در پنل...</span>
-          </div>
+            <input value={globalSearch} onChange={(e)=>setGlobalSearch(e.target.value)} placeholder="جستجو در پنل..." aria-label="جستجو در پنل" />
+          </form>
           <div className="topbar__right">
             <span className="topbar-user">{displayName}</span>
             <span className="badge badge-info">{roleLabel(user.role)}</span>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../../lib/api";
 import { PageHeader } from "../../components/Layout";
 import { EmptyState, Spinner, VisibilityBadge, fmtDate } from "../../components/ui";
@@ -12,18 +13,25 @@ export default function AdminProducts() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [visibility, setVisibility] = useState("");
+  const [searchParams] = useSearchParams();
 
-  function load() {
+  function load(searchOverride?: string) {
     setLoading(true);
     const q = new URLSearchParams();
-    if (search) q.set("search", search);
+    const currentSearch = searchOverride ?? search;
+    if (currentSearch) q.set("search", currentSearch);
     if (visibility) q.set("visibility", visibility);
     q.set("pageSize", "50");
     api.get<{ items: Product[]; total: number }>(`/api/products?${q}`)
       .then((r) => { setItems(r.items); setTotal(r.total); })
       .finally(() => setLoading(false));
   }
-  useEffect(load, [visibility]);
+  useEffect(() => {
+    const q = searchParams.get("search") || "";
+    setSearch(q);
+    load(q);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibility, searchParams]);
 
   async function forceHide(p: Product) {
     if (!confirm(`محصول «${p.name}» به‌صورت سراسری مخفی شود؟`)) return;
