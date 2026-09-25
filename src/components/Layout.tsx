@@ -34,6 +34,21 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [sellerTheme, setSellerTheme] = useState(user?.seller?.themeColor || "#22348f");
+
+  useEffect(() => {
+    if (area === "seller") setSellerTheme(user?.seller?.themeColor || "#22348f");
+  }, [area, user?.seller?.themeColor]);
+
+  useEffect(() => {
+    const onThemeChange = (event: Event) => {
+      const value = (event as CustomEvent<{ color?: string }>).detail?.color;
+      if (value) setSellerTheme(value);
+    };
+    window.addEventListener("seller-theme-changed", onThemeChange);
+    return () => window.removeEventListener("seller-theme-changed", onThemeChange);
+  }, []);
+
   useEffect(() => { setMenuOpen(false); setGlobalSearch(""); }, [area, location.pathname]);
 
   useEffect(() => {
@@ -55,7 +70,16 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
   const displayName = area === "seller" ? (user.seller?.storeName || user.email) : roleLabel(user.role);
 
   return (
-    <div className="app-shell">
+    <div
+      className="app-shell"
+      style={area === "seller" ? ({
+        "--seller-theme": sellerTheme,
+        "--neo-blue": sellerTheme,
+        "--neo-blue-dark": sellerTheme,
+        "--color-primary": sellerTheme,
+        "--color-secondary": sellerTheme,
+      } as React.CSSProperties) : undefined}
+    >
       {menuOpen && <button className="mobile-menu-backdrop" aria-label="بستن منو" onClick={() => setMenuOpen(false)} />}
       <aside className={`sidebar${menuOpen ? " open" : ""}`}>
         <div className="brand">

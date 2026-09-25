@@ -88,3 +88,10 @@
 .seller-profile-editor .seller-profile-tips strong{font-size:.9rem}
 .seller-profile-editor .seller-save-bar{margin-top:20px!important;border-radius:18px!important}
 @media(max-width:800px){.seller-profile-editor .seller-profile-hero{padding:20px!important}.seller-profile-editor .seller-profile-hero__avatar{width:84px;height:84px}.seller-profile-editor .seller-profile-hero__action{width:100%}.seller-profile-editor .seller-profile-hero__action .btn{width:100%;justify-content:center}.seller-profile-editor .seller-save-bar{align-items:stretch;flex-direction:column}.seller-profile-editor .seller-save-button{width:100%}}
+
+/* Seller theme follows the color selected in the store profile. */
+.app-shell[style*="--seller-theme"] .sidebar nav a.active{color:var(--seller-theme)!important;background:color-mix(in srgb,var(--seller-theme) 10%,#fff)!important}
+.app-shell[style*="--seller-theme"] .brand-mark{background:var(--seller-theme)!important}
+.app-shell[style*="--seller-theme"] .topbar{border-bottom-color:color-mix(in srgb,var(--seller-theme) 22%,var(--neo-border))}
+.app-shell[style*="--seller-theme"] .topbar-search--active:focus-within{border-color:var(--seller-theme);box-shadow:0 0 0 3px color-mix(in srgb,var(--seller-theme) 14%,transparent)}
+.app-shell[style*="--seller-theme"] .badge-info{background:color-mix(in srgb,var(--seller-theme) 10%,#fff);color:var(--seller-theme)}

@@ -85,6 +85,7 @@ export default function SellerProfile() {
       });
       setSeller(result.seller);
       setCategoryId(result.seller.category?.id || categoryId);
+      window.dispatchEvent(new CustomEvent("seller-theme-changed", { detail: { color: result.seller.themeColor || themeColor } }));
       setLogoPreview(result.seller.logoUrl || null);
       push("پروفایل فروشگاه ذخیره شد.", "success");
     } catch (err) {

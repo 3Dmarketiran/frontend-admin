@@ -20,6 +20,7 @@ export interface SessionUser {
     id: string;
     slug: string;
     storeName: string;
+    themeColor?: string | null;
   } | null;
 }
 
