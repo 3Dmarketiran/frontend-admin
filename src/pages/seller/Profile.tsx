@@ -148,16 +148,7 @@ export default function SellerProfile() {
             </div>
 
             <aside className="seller-profile-side">
-              <div className="card seller-public-preview">
-                <div className="seller-card-heading"><div><span>پیش‌نمایش</span><h3>آنچه مشتری می‌بیند</h3></div></div>
-                <div className="seller-public-mini">
-                  <div className="seller-public-mini__avatar">{logoPreview ? <img src={logoPreview} alt=""/> : <Icon name="store"/>}</div>
-                  <strong>{seller.storeName || "نام فروشگاه"}</strong><small>@{seller.slug}</small>
-                  <p>{seller.description || "بیوی فروشگاه شما اینجا نمایش داده می‌شود."}</p>
-                  <div>{seller.contactPhone && <span><Icon name="phone"/>{seller.contactPhone}</span>}{seller.address && <span><Icon name="pin"/>{seller.address}</span>}</div>
-                </div>
-              </div>
-              <div className="card seller-profile-tips"><strong>نکته برای پروفایل حرفه‌ای</strong><ul><li>یک عکس واضح و مربعی برای لوگو انتخاب کنید.</li><li>بیو را کوتاه، واقعی و قابل فهم بنویسید.</li><li>شماره تماس و آدرس را برای ارتباط سریع کامل کنید.</li></ul></div>
+              <div className="card seller-profile-tips"><strong>نکته برای پروفایل حرفه‌ای</strong><ul><li>یک عکس واضح و مربعی برای لوگو انتخاب کنید.</li><li>بیو را کوتاه، واقعی و قابل فهم بنویسید.</li><li>شماره تماس و آدرس را برای ارتباط سریع کامل کنید.</li><li>پیش‌نمایش کامل بالای صفحه دقیقاً همان چیزی است که مشتری می‌بیند.</li></ul></div>
             </aside>
           </div>
           <div className="seller-save-bar"><div><strong>آماده انتشار اطلاعات؟</strong><span>بعد از ذخیره، اطلاعات در انتشار بعدی سایت عمومی نمایش داده می‌شود.</span></div><button className="btn btn-dark seller-save-button" disabled={saving || uploadingLogo} type="submit">{saving ? "در حال ذخیره..." : "ذخیره تغییرات"}</button></div>
