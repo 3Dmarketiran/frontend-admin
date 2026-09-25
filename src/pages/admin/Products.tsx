@@ -58,7 +58,7 @@ export default function AdminProducts() {
               <option value="PUBLISHED">منتشرشده</option>
               <option value="HIDDEN">مخفی</option>
             </select>
-            <button className="btn btn-outline" onClick={load}>جستجو</button>
+            <button className="btn btn-outline" onClick={() => load()}>جستجو</button>
           </div>
         </div>
 
