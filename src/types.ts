@@ -57,6 +57,8 @@ export interface Product {
   shortDescription: string | null;
   fullDescription: string | null;
   tags: string | null;
+  material: string | null;
+  colors: Array<{ name: string; value: string }> | null;
   price: number | null;
   isPinned: boolean;
   pinOrder: number | null;

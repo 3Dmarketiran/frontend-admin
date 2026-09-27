@@ -54,6 +54,8 @@ export default function ProductWizard() {
   const [shortDescription, setShortDescription] = useState("");
   const [fullDescription, setFullDescription] = useState("");
   const [tags, setTags] = useState("");
+  const [material, setMaterial] = useState("");
+  const [colors, setColors] = useState<Array<{ name: string; value: string }>>([]);
   const [price, setPrice] = useState("");
   const [width, setWidth] = useState("");
   const [height, setHeight] = useState("");
@@ -111,6 +113,8 @@ export default function ProductWizard() {
     );
 
     setTags(p.tags ?? "");
+    setMaterial(p.material ?? "");
+    setColors(Array.isArray(p.colors) ? p.colors : []);
     setPrice(p.price == null ? "" : String(p.price));
 
     setUnit(
@@ -215,6 +219,12 @@ export default function ProductWizard() {
 
         tags:
           tags.trim() || undefined,
+
+        material:
+          material.trim() || undefined,
+
+        colors:
+          colors.filter((item) => item.name.trim()).map((item) => ({ ...item, name: item.name.trim() })),
 
         price:
           price.trim() === "" ? undefined : Number(price),
@@ -464,6 +474,28 @@ export default function ProductWizard() {
                   <label>قیمت محصول</label>
                   <input type="number" min={0} step="any" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="مثلاً 12500000" inputMode="decimal" />
                   <div className="form-help">قیمت به تومان وارد می‌شود. خالی گذاشتن یعنی قیمت برای محصول نمایش داده نشود.</div>
+                </div>
+              </div>
+
+              <div className="form-row product-meta-row">
+                <div className="form-group">
+                  <label>جنس متریال</label>
+                  <input value={material} onChange={(e) => setMaterial(e.target.value)} placeholder="مثلاً چوب، فلز، پارچه" maxLength={120} />
+                  <div className="form-help">اختیاری است و در صفحه خود محصول نمایش داده می‌شود، نه کارت محصول.</div>
+                </div>
+                <div className="form-group product-colors-editor">
+                  <label>رنگ محصول</label>
+                  <div className="product-colors-list">
+                    {colors.map((color, index) => (
+                      <div className="product-color-row" key={`${index}-${color.name}`}>
+                        <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(color.value) ? color.value : "#808080"} onChange={(e) => setColors((items) => items.map((item, i) => i === index ? { ...item, value: e.target.value } : item))} aria-label="انتخاب رنگ" />
+                        <input value={color.name} onChange={(e) => setColors((items) => items.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} placeholder="نام رنگ" />
+                        <button type="button" className="btn btn-outline btn-sm" onClick={() => setColors((items) => items.filter((_, i) => i !== index))}>حذف</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => setColors((items) => [...items, { name: "", value: "#808080" }])}>+ افزودن رنگ</button>
+                  <div className="form-help">اختیاری است؛ می‌توانید صفر، یک یا چند رنگ برای یک محصول ثبت کنید.</div>
                 </div>
               </div>
 
