@@ -486,9 +486,11 @@ export default function ProductWizard() {
                   <label>رنگ محصول</label>
                   <div className="product-colors-list">
                     {colors.map((color, index) => (
-                      <div className="product-color-row" key={`${index}-${color.name}`}>
+                      <div className="product-color-row" key={index}>
+                        <span className="product-color-swatch" style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(color.value) ? color.value : "#808080" }} aria-hidden="true" />
                         <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(color.value) ? color.value : "#808080"} onChange={(e) => setColors((items) => items.map((item, i) => i === index ? { ...item, value: e.target.value } : item))} aria-label="انتخاب رنگ" />
                         <input value={color.name} onChange={(e) => setColors((items) => items.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} placeholder="نام رنگ" />
+                        <span className="product-color-hex">{color.value}</span>
                         <button type="button" className="btn btn-outline btn-sm" onClick={() => setColors((items) => items.filter((_, i) => i !== index))}>حذف</button>
                       </div>
                     ))}
