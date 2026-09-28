@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { api, ApiError } from "../../lib/api";
+import { api, ApiError, API_URL } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
 import { Spinner } from "../../components/ui";
@@ -7,6 +7,13 @@ import { useToast } from "../../lib/toast";
 import type { Seller } from "../../types";
 
 type LogoUploadResponse = { seller: Seller };
+
+function resolveSellerLogoUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (/^(https?:|data:|blob:)/i.test(url)) return url;
+  if (/^\/api\//i.test(url)) return `${API_URL}${url}`;
+  return url;
+}
 
 function Icon({ name }: { name: "store" | "phone" | "mail" | "pin" | "image" }) {
   const paths = {
@@ -37,7 +44,7 @@ export default function SellerProfile() {
     ])
       .then(([sellerResponse]) => {
         setSeller(sellerResponse.seller);
-        setLogoPreview(sellerResponse.seller.logoUrl || null);
+        setLogoPreview(resolveSellerLogoUrl(sellerResponse.seller.logoUrl));
         setThemeColor(sellerResponse.seller.themeColor || "#2e6fce");
       })
       .catch((err) => push(err instanceof ApiError ? err.message : "خطا در دریافت اطلاعات فروشگاه.", "error"))
@@ -57,10 +64,10 @@ export default function SellerProfile() {
     try {
       const formData = new FormData(); formData.append("logo", file);
       const result = await api.upload<LogoUploadResponse>(`/api/sellers/${seller.id}/logo`, formData);
-      setSeller(result.seller); revokePreview(localPreview); setLogoPreview(result.seller.logoUrl || null);
+      setSeller(result.seller); revokePreview(localPreview); setLogoPreview(resolveSellerLogoUrl(result.seller.logoUrl));
       push("لوگوی فروشگاه با موفقیت آپلود شد.", "success");
     } catch (err) {
-      revokePreview(localPreview); setLogoPreview(seller.logoUrl || null);
+      revokePreview(localPreview); setLogoPreview(resolveSellerLogoUrl(seller.logoUrl));
       push(err instanceof ApiError ? err.message : "خطا در آپلود لوگو.", "error");
     } finally { setUploadingLogo(false); }
   }
@@ -72,14 +79,14 @@ export default function SellerProfile() {
         storeName: seller.storeName,
         description: seller.description || undefined,
         logoUrl: seller.logoUrl || undefined,
+        themeColor,
         contactEmail: seller.contactEmail || undefined,
         contactPhone: seller.contactPhone || undefined,
         address: seller.address || undefined,
-        themeColor,
       });
       setSeller(result.seller);
       window.dispatchEvent(new CustomEvent("seller-theme-changed", { detail: { color: result.seller.themeColor || themeColor } }));
-      setLogoPreview(result.seller.logoUrl || null);
+      setLogoPreview(resolveSellerLogoUrl(result.seller.logoUrl));
       push("پروفایل فروشگاه ذخیره شد.", "success");
     } catch (err) {
       push(err instanceof ApiError ? err.message : "خطا در ذخیره پروفایل.", "error");

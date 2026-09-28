@@ -99,3 +99,12 @@
 
 /* Product colors editor QA: visible swatch + stable input layout. */
 .product-colors-list{display:grid;gap:9px;margin-bottom:10px}.product-color-row{display:grid;grid-template-columns:34px 46px minmax(110px,1fr) auto auto;align-items:center;gap:8px;padding:8px;border:1px solid var(--neo-border);border-radius:12px;background:var(--neo-surface-2,#fafbfc)}.product-color-swatch{width:30px;height:30px;border-radius:9px;border:1px solid rgba(15,23,42,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.45);display:block}.product-color-row input[type=color]{width:38px;height:34px;padding:3px;border-radius:9px;border:1px solid var(--neo-border);background:#fff;cursor:pointer}.product-color-hex{direction:ltr;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.72rem;color:var(--neo-muted);white-space:nowrap}.product-color-row input:not([type=color]){min-width:0}@media(max-width:700px){.product-color-row{grid-template-columns:34px 42px minmax(0,1fr) auto}.product-color-hex{grid-column:3;justify-self:start}.product-color-row .btn{grid-column:4;grid-row:1 / span 2}}
+
+
+/* V26 — product upload surfaces: full-width, centered, clean dashed boundary */
+.dropzone{position:relative;width:100%;min-height:170px;box-sizing:border-box;border:2px dashed #cfd6e2!important;border-radius:18px!important;padding:30px 22px!important;margin:14px 0 0;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--neo-muted);background:var(--neo-surface-2,#fafbfc)!important;background-image:none!important;overflow:hidden}
+.dropzone:hover,.dropzone.dragging{border-color:var(--neo-blue)!important;background:color-mix(in srgb,var(--neo-blue) 4%,var(--neo-surface))!important;color:var(--neo-blue-dark)}
+.dropzone::before{content:"";position:absolute;inset:8px;border:1px dashed rgba(120,132,150,.34);border-radius:12px;pointer-events:none}
+.dropzone>*{position:relative;z-index:1}
+.product-model-name{display:inline-flex;align-items:center;min-width:0;max-width:min(70vw,520px);padding:8px 10px;border:1px solid var(--neo-border);border-radius:10px;background:var(--neo-surface-2);color:var(--neo-text-strong);font-size:.78rem;font-weight:750;direction:ltr;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:700px){.dropzone{min-height:155px;padding:25px 16px!important}.dropzone::before{inset:7px}.product-model-name{max-width:calc(100vw - 120px)}}

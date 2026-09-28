@@ -245,6 +245,12 @@ export default function ProductWizard() {
 
       setProductId(r.product.id);
       setProduct(r.product);
+      try {
+        const fresh = await api.get<{ product: Product }>(`/api/products/${r.product.id}`);
+        setProduct(fresh.product);
+      } catch {
+        // The saved product is still usable; the step components retry their data on mount.
+      }
 
       setStep(1);
     } catch (err) {
@@ -993,6 +999,10 @@ function ImagesStep({
       null
     );
 
+  useEffect(() => {
+    void onRefetch();
+  }, [productId]);
+
   async function uploadFile(
     file: File
   ) {
@@ -1322,6 +1332,10 @@ function ModelStep({
   const [dragging, setDragging] =
     useState(false);
 
+  useEffect(() => {
+    void onRefetch();
+  }, [productId, kind]);
+
   const accept =
     kind === "3D"
       ? ".glb,.gltf,.zip"
@@ -1587,21 +1601,9 @@ function ModelStep({
                     "wrap",
                 }}
               >
-                <span className="badge badge-info">
-                  {m.kind}
+                <span className="product-model-name" title={m.url}>
+                  {decodeURIComponent(m.url.split("/").pop()?.split("?")[0] || `${m.kind} model`)}
                 </span>
-
-                <a
-                  href={m.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{
-                    color:
-                      "var(--color-primary)",
-                  }}
-                >
-                  مشاهده فایل
-                </a>
 
                 <button
                   className="btn btn-sm btn-danger"
