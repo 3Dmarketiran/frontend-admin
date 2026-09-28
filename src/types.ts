@@ -24,18 +24,6 @@ export interface SessionUser {
   } | null;
 }
 
-export interface Category {
-  id: string;
-  slug: string;
-  name: string;
-  isActive: boolean;
-  parentId: string | null;
-  _count?: {
-    products?: number;
-    sellers?: number;
-  };
-}
-
 export interface ProductImage {
   id: string;
   url: string;
@@ -62,8 +50,6 @@ export interface Product {
   price: number | null;
   isPinned: boolean;
   pinOrder: number | null;
-  categoryId: string | null;
-  category?: Category | null;
   seller?: {
     id: string;
     slug: string;
@@ -93,7 +79,6 @@ export interface Seller {
   contactEmail: string | null;
   contactPhone: string | null;
   address: string | null;
-  category?: Category | null;
   socialLinks: Record<string, string> | null;
   isActive: boolean;
   user?: {

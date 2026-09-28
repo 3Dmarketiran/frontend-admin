@@ -10,7 +10,6 @@ import { PageHeader } from "../../components/Layout";
 import { Spinner } from "../../components/ui";
 import { useToast } from "../../lib/toast";
 import type {
-  Category,
   DimensionUnit,
   Product,
 } from "../../types";
@@ -1018,14 +1017,10 @@ function ImagesStep({
     setProgress(0);
 
     const fd = new FormData();
-
-    fd.append(
-      "image",
-      file
-    );
+    fd.append("images", file);
 
     await uploadWithProgress(
-      `/api/products/${productId}/images`,
+      `/api/products/${productId}/package`,
       fd,
       setProgress
     );
@@ -1370,29 +1365,23 @@ function ModelStep({
       );
     }
 
-    const fd =
-      new FormData();
-
-    fd.append(
-      isZip
-        ? "modelZip"
-        : "model",
-      file
-    );
+    const fd = new FormData();
+    if (isZip) {
+      fd.append("modelZip", file);
+    } else if (extension === "usdz") {
+      fd.append("ar", file);
+    } else {
+      fd.append("models", file);
+    }
 
     setCurrentFile(file.name);
     setProgress(0);
 
-    const endpoint =
-      isZip
-        ? `/api/products/${productId}/models/zip`
-        : `/api/products/${productId}/models`;
+    const endpoint = isZip
+      ? `/api/products/${productId}/models/zip`
+      : `/api/products/${productId}/package`;
 
-    await uploadWithProgress(
-      endpoint,
-      fd,
-      setProgress
-    );
+    await uploadWithProgress(endpoint, fd, setProgress);
   }
 
   async function onFile(
