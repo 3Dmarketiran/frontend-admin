@@ -7,6 +7,7 @@ const ADMIN_NAV = [
   { to: "/admin", label: "نمای کلی", end: true, icon: "grid" },
   { to: "/admin/sellers", label: "فروشندگان", icon: "store" },
   { to: "/admin/products", label: "محصولات", icon: "box" },
+  { to: "/admin/categories", label: "دسته‌بندی‌ها", icon: "folder" },
   { to: "/admin/subscriptions", label: "اشتراک‌ها", icon: "card" },
   { to: "/admin/plans", label: "پلن‌های اشتراک", icon: "layers" },
   { to: "/admin/publishing", label: "انتشار", icon: "send" },

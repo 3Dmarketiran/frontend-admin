@@ -5,10 +5,13 @@ import { EmptyState, Modal, Spinner, fmtDate } from "../../components/ui";
 import { useToast } from "../../lib/toast";
 import type { Seller, SubscriptionPlan } from "../../types";
 
+type PlanCategory = { id: string; name: string; };
+
 export default function AdminSellers() {
   const { push } = useToast();
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [planCategories, setPlanCategories] = useState<PlanCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [activateFor, setActivateFor] = useState<Seller | null>(null);
@@ -17,9 +20,9 @@ export default function AdminSellers() {
     setLoading(true);
     Promise.all([
       api.get<{ sellers: Seller[] }>("/api/sellers"),
-      api.get<{ plans: SubscriptionPlan[] }>("/api/subscriptions/plans"),
+      api.get<{ plans: SubscriptionPlan[]; categories?: PlanCategory[] }>("/api/subscriptions/plans"),
     ])
-      .then(([s, p]) => { setSellers(s.sellers); setPlans(p.plans); })
+      .then(([s, p]) => { setSellers(s.sellers); setPlans(p.plans); setPlanCategories(p.categories || []); })
       .finally(() => setLoading(false));
   }
   useEffect(load, []);
@@ -77,7 +80,7 @@ export default function AdminSellers() {
       </div>
 
       {showCreate && <CreateSellerModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} />}
-      {activateFor && <ActivateSubscriptionModal seller={activateFor} plans={plans} onClose={() => setActivateFor(null)} onDone={() => { setActivateFor(null); load(); }} />}
+      {activateFor && <ActivateSubscriptionModal seller={activateFor} plans={plans} categories={planCategories} onClose={() => setActivateFor(null)} onDone={() => { setActivateFor(null); load(); }} />}
     </>
   );
 }
@@ -135,7 +138,7 @@ function CreateSellerModal({ onClose, onCreated }: { onClose: () => void; onCrea
   );
 }
 
-function ActivateSubscriptionModal({ seller, plans, onClose, onDone }: { seller: Seller; plans: SubscriptionPlan[]; onClose: () => void; onDone: () => void }) {
+function ActivateSubscriptionModal({ seller, plans, categories, onClose, onDone }: { seller: Seller; plans: SubscriptionPlan[]; categories: PlanCategory[]; onClose: () => void; onDone: () => void }) {
   const { push } = useToast();
   const [planId, setPlanId] = useState(plans[0]?.id ?? "");
   const [notes, setNotes] = useState("");
@@ -167,7 +170,11 @@ function ActivateSubscriptionModal({ seller, plans, onClose, onDone }: { seller:
           <label>پلن اشتراک</label>
           <select value={planId} onChange={(e) => setPlanId(e.target.value)}>
             {plans.length === 0 && <option value="">هیچ پلنی موجود نیست</option>}
-            {plans.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.durationDays} روز — {p.price.toLocaleString("fa-IR")}</option>)}
+            {categories.length > 0 ? categories.map((category) => {
+              const categoryPlans = plans.filter((p) => p.categoryId === category.id);
+              if (!categoryPlans.length) return null;
+              return <optgroup key={category.id} label={category.name}>{categoryPlans.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.durationDays} روز — {p.price.toLocaleString("fa-IR")}</option>)}</optgroup>;
+            }) : plans.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.durationDays} روز — {p.price.toLocaleString("fa-IR")}</option>)}
           </select>
         </div>
         <div className="form-group">

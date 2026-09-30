@@ -29,6 +29,13 @@ type SubscriptionResponse = Subscription & {
   plan?: SubscriptionPlan | null;
 };
 
+type PlanCategory = {
+  id: string;
+  name: string;
+  description?: string | null;
+  sortOrder?: number;
+};
+
 function formatDate(value?: string | null) {
   if (!value) return "—";
 
@@ -137,6 +144,8 @@ export default function Subscription() {
 
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [planCategories, setPlanCategories] = useState<PlanCategory[]>([]);
+  const [selectedPlanCategory, setSelectedPlanCategory] = useState("");
   const [history, setHistory] = useState<SubscriptionResponse[]>([]);
 
   const [error, setError] = useState<string | null>(null);
@@ -164,12 +173,15 @@ export default function Subscription() {
 
   const loadPlans = useCallback(async () => {
     try {
-      const response = await api.get<{ plans?: SubscriptionPlan[] } | SubscriptionPlan[]>(
+      const response = await api.get<{ plans?: SubscriptionPlan[]; categories?: PlanCategory[] } | SubscriptionPlan[]>(
         "/api/subscriptions/plans",
       );
 
       const items = Array.isArray(response) ? response : (response.plans ?? []);
+      const categories = Array.isArray(response) ? [] : (response.categories ?? []);
       setPlans(items);
+      setPlanCategories(categories);
+      if (categories.length) setSelectedPlanCategory((current) => current && categories.some((c) => c.id === current) ? current : categories[0].id);
     } catch (err) {
       push(
         err instanceof ApiError
@@ -554,8 +566,31 @@ export default function Subscription() {
             description="در حال حاضر هیچ پلن فعالی برای فروشگاه‌ها تعریف نشده است."
           />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {plans.map((plan) => {
+          <>
+            {planCategories.length > 0 && (
+              <div className="mb-4 flex gap-2 overflow-x-auto rounded-2xl bg-slate-50 p-1.5">
+                {planCategories.map((category) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => setSelectedPlanCategory(category.id)}
+                    className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold transition ${selectedPlanCategory === category.id ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-white"}`}
+                  >
+                    {category.name}
+                    <span className="mr-1 text-xs opacity-70">({plans.filter((plan) => plan.categoryId === category.id).length})</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {planCategories.map((category) => {
+              if (category.id !== selectedPlanCategory) return null;
+              const categoryPlans = plans.filter((plan) => plan.categoryId === category.id);
+              return (
+                <div key={category.id}>
+                  {category.description && <p className="mb-4 text-sm text-slate-500">{category.description}</p>}
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    {categoryPlans.map((plan) => {
               const isCurrent =
                 activeSubscription?.plan?.id === plan.id &&
                 activeSubscription.status === "ACTIVE";
@@ -635,8 +670,20 @@ export default function Subscription() {
                   </div>
                 </div>
               );
+                    })}
+                  </div>
+                </div>
+              );
             })}
-          </div>
+
+            {planCategories.length === 0 && (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {plans.map((plan) => {
+                  return <div key={plan.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 className="font-bold text-slate-900">{plan.name}</h3><div className="mt-3 text-2xl font-black">{formatPrice(plan.price)} <span className="text-xs font-normal text-slate-400">تومان</span></div></div>;
+                })}
+              </div>
+            )}
+          </>
         )}
       </section>
 

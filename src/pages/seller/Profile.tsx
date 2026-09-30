@@ -1,20 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { api, ApiError, API_URL } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
 import { Spinner } from "../../components/ui";
 import { useToast } from "../../lib/toast";
-import type { Seller } from "../../types";
+import type { Category, Seller } from "../../types";
 
 type LogoUploadResponse = { seller: Seller };
-
-function resolveSellerLogoUrl(url: string | null | undefined, sellerId?: string): string | null {
-  if (sellerId && url) return `${API_URL}/api/sellers/${sellerId}/logo`;
-  if (!url) return null;
-  if (/^(https?:|data:|blob:)/i.test(url)) return url;
-  if (/^\/api\//i.test(url)) return `${API_URL}${url}`;
-  return url;
-}
 
 function Icon({ name }: { name: "store" | "phone" | "mail" | "pin" | "image" }) {
   const paths = {
@@ -35,6 +27,8 @@ export default function SellerProfile() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryId, setCategoryId] = useState("");
   const [themeColor, setThemeColor] = useState("#2e6fce");
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -42,10 +36,13 @@ export default function SellerProfile() {
     if (!user?.seller?.id) { setLoading(false); return; }
     Promise.all([
       api.get<{ seller: Seller }>(`/api/sellers/${user.seller.id}`),
+      api.get<{ categories: Category[] }>("/api/categories"),
     ])
-      .then(([sellerResponse]) => {
+      .then(([sellerResponse, categoryResponse]) => {
         setSeller(sellerResponse.seller);
-        setLogoPreview(resolveSellerLogoUrl(sellerResponse.seller.logoUrl, sellerResponse.seller.id));
+        setLogoPreview(sellerResponse.seller.logoUrl || null);
+        setCategories(categoryResponse.categories.filter((item) => item.isActive !== false));
+        setCategoryId(sellerResponse.seller.category?.id || "");
         setThemeColor(sellerResponse.seller.themeColor || "#2e6fce");
       })
       .catch((err) => push(err instanceof ApiError ? err.message : "خطا در دریافت اطلاعات فروشگاه.", "error"))
@@ -65,10 +62,10 @@ export default function SellerProfile() {
     try {
       const formData = new FormData(); formData.append("logo", file);
       const result = await api.upload<LogoUploadResponse>(`/api/sellers/${seller.id}/logo`, formData);
-      setSeller(result.seller); revokePreview(localPreview); setLogoPreview(resolveSellerLogoUrl(result.seller.logoUrl, result.seller.id));
+      setSeller(result.seller); revokePreview(localPreview); setLogoPreview(result.seller.logoUrl || null);
       push("لوگوی فروشگاه با موفقیت آپلود شد.", "success");
     } catch (err) {
-      revokePreview(localPreview); setLogoPreview(resolveSellerLogoUrl(seller.logoUrl, seller.id));
+      revokePreview(localPreview); setLogoPreview(seller.logoUrl || null);
       push(err instanceof ApiError ? err.message : "خطا در آپلود لوگو.", "error");
     } finally { setUploadingLogo(false); }
   }
@@ -80,14 +77,16 @@ export default function SellerProfile() {
         storeName: seller.storeName,
         description: seller.description || undefined,
         logoUrl: seller.logoUrl || undefined,
-        themeColor,
         contactEmail: seller.contactEmail || undefined,
         contactPhone: seller.contactPhone || undefined,
         address: seller.address || undefined,
+        categoryId: categoryId || null,
+        themeColor,
       });
       setSeller(result.seller);
+      setCategoryId(result.seller.category?.id || categoryId);
       window.dispatchEvent(new CustomEvent("seller-theme-changed", { detail: { color: result.seller.themeColor || themeColor } }));
-      setLogoPreview(resolveSellerLogoUrl(result.seller.logoUrl, result.seller.id));
+      setLogoPreview(result.seller.logoUrl || null);
       push("پروفایل فروشگاه ذخیره شد.", "success");
     } catch (err) {
       push(err instanceof ApiError ? err.message : "خطا در ذخیره پروفایل.", "error");
@@ -134,6 +133,7 @@ export default function SellerProfile() {
                   <div><strong>عکس پروفایل / لوگوی فروشگاه</strong><p>JPG، PNG یا WEBP — حداکثر ۵ مگابایت</p><input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { const f=e.target.files?.[0]; if(f) void uploadLogo(f); e.target.value=""; }} /><button type="button" className="btn btn-outline" onClick={() => logoInputRef.current?.click()}>انتخاب تصویر</button></div>
                 </div>
                 <div className="form-group"><label>نام فروشگاه</label><input value={seller.storeName} onChange={(e)=>setSeller({...seller,storeName:e.target.value})} required maxLength={120}/></div>
+                <div className="form-group"><label>دسته‌بندی فروشگاه</label><select value={categoryId} onChange={(e)=>setCategoryId(e.target.value)}><option value="">بدون دسته‌بندی</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select><div className="form-help">این دسته‌بندی مربوط به خود فروشگاه است و در سایت عمومی کنار فروشگاه نمایش داده می‌شود.</div></div>
                 <div className="form-group seller-theme-field"><label>رنگ پس‌زمینه فروشگاه</label><div className="seller-theme-control"><span className="seller-theme-swatch" style={{backgroundColor: themeColor}} aria-hidden="true" /><input type="color" value={themeColor} onChange={(e)=>setThemeColor(e.target.value)} aria-label="رنگ پس‌زمینه فروشگاه" /><input value={themeColor} onChange={(e)=>setThemeColor(e.target.value)} pattern="^#[0-9A-Fa-f]{6}$" maxLength={7} aria-label="کد رنگ" /></div><div className="form-help">این رنگ به‌عنوان پس‌زمینه بخش معرفی فروشگاه در سایت عمومی استفاده می‌شود؛ عکس پس‌زمینه وجود ندارد.</div></div>
                 <div className="form-group"><label>بیو / معرفی فروشگاه</label><textarea rows={6} value={seller.description ?? ""} onChange={(e)=>setSeller({...seller,description:e.target.value})} maxLength={2000} placeholder="مثلاً: فروش تخصصی مبلمان مدرن، ارسال به سراسر کشور و مشاوره قبل از خرید..."/><div className="form-help">همین متن در پروفایل عمومی فروشگاه به مشتری نمایش داده می‌شود.</div></div>
               </section>

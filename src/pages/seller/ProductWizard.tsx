@@ -10,6 +10,7 @@ import { PageHeader } from "../../components/Layout";
 import { Spinner } from "../../components/ui";
 import { useToast } from "../../lib/toast";
 import type {
+  Category,
   DimensionUnit,
   Product,
 } from "../../types";
@@ -245,12 +246,6 @@ export default function ProductWizard() {
 
       setProductId(r.product.id);
       setProduct(r.product);
-      try {
-        const fresh = await api.get<{ product: Product }>(`/api/products/${r.product.id}`);
-        setProduct(fresh.product);
-      } catch {
-        // The saved product is still usable; the step components retry their data on mount.
-      }
 
       setStep(1);
     } catch (err) {
@@ -492,11 +487,9 @@ export default function ProductWizard() {
                   <label>رنگ محصول</label>
                   <div className="product-colors-list">
                     {colors.map((color, index) => (
-                      <div className="product-color-row" key={index}>
-                        <span className="product-color-swatch" style={{ backgroundColor: /^#[0-9a-fA-F]{6}$/.test(color.value) ? color.value : "#808080" }} aria-hidden="true" />
+                      <div className="product-color-row" key={`${index}-${color.name}`}>
                         <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(color.value) ? color.value : "#808080"} onChange={(e) => setColors((items) => items.map((item, i) => i === index ? { ...item, value: e.target.value } : item))} aria-label="انتخاب رنگ" />
                         <input value={color.name} onChange={(e) => setColors((items) => items.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} placeholder="نام رنگ" />
-                        <span className="product-color-hex">{color.value}</span>
                         <button type="button" className="btn btn-outline btn-sm" onClick={() => setColors((items) => items.filter((_, i) => i !== index))}>حذف</button>
                       </div>
                     ))}
@@ -999,10 +992,6 @@ function ImagesStep({
       null
     );
 
-  useEffect(() => {
-    void onRefetch();
-  }, [productId]);
-
   async function uploadFile(
     file: File
   ) {
@@ -1029,10 +1018,14 @@ function ImagesStep({
     setProgress(0);
 
     const fd = new FormData();
-    fd.append("images", file);
+
+    fd.append(
+      "image",
+      file
+    );
 
     await uploadWithProgress(
-      `/api/products/${productId}/package`,
+      `/api/products/${productId}/images`,
       fd,
       setProgress
     );
@@ -1332,10 +1325,6 @@ function ModelStep({
   const [dragging, setDragging] =
     useState(false);
 
-  useEffect(() => {
-    void onRefetch();
-  }, [productId, kind]);
-
   const accept =
     kind === "3D"
       ? ".glb,.gltf,.zip"
@@ -1381,23 +1370,29 @@ function ModelStep({
       );
     }
 
-    const fd = new FormData();
-    if (isZip) {
-      fd.append("modelZip", file);
-    } else if (extension === "usdz") {
-      fd.append("ar", file);
-    } else {
-      fd.append("models", file);
-    }
+    const fd =
+      new FormData();
+
+    fd.append(
+      isZip
+        ? "modelZip"
+        : "model",
+      file
+    );
 
     setCurrentFile(file.name);
     setProgress(0);
 
-    const endpoint = isZip
-      ? `/api/products/${productId}/models/zip`
-      : `/api/products/${productId}/package`;
+    const endpoint =
+      isZip
+        ? `/api/products/${productId}/models/zip`
+        : `/api/products/${productId}/models`;
 
-    await uploadWithProgress(endpoint, fd, setProgress);
+    await uploadWithProgress(
+      endpoint,
+      fd,
+      setProgress
+    );
   }
 
   async function onFile(
@@ -1601,9 +1596,21 @@ function ModelStep({
                     "wrap",
                 }}
               >
-                <span className="product-model-name" title={m.url}>
-                  {decodeURIComponent(m.url.split("/").pop()?.split("?")[0] || `${m.kind} model`)}
+                <span className="badge badge-info">
+                  {m.kind}
                 </span>
+
+                <a
+                  href={m.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    color:
+                      "var(--color-primary)",
+                  }}
+                >
+                  مشاهده فایل
+                </a>
 
                 <button
                   className="btn btn-sm btn-danger"
