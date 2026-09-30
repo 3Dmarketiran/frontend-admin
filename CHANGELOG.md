@@ -1,3 +1,12 @@
+# V51 — 3D/AR Capture Guide
+
+- Removed the native Object Capture bridge/module from the Seller repository.
+- Returned Seller product capture flow to file-based 3D/AR upload.
+- Added a dedicated Seller guide for preparing 3D/AR models on iOS and Android.
+- iOS guide covers Reality Composer Object Capture, USDZ preservation, GLB conversion with Blender, and real-world scale checks.
+- Android guide covers RealityScan Mobile, GLB output, real-world scale verification, and USDZ preparation.
+- Added the guide to the Seller navigation and linked it from the 3D/AR upload steps.
+
 # خلاصه تغییرات (دیباگ و آماده‌سازی)
 
 ## 1) رفع باگ اصلی: آپلود لوگو / تصویر → «مسیر یافت نشد»

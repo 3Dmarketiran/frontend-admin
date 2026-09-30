@@ -535,7 +535,9 @@ export default function ProductWizard() {
 
           {step === 2 &&
             productId && (
-              <ModelStep
+              <>
+                <GuideLink kind="3D" />
+                <ModelStep
                 productId={productId}
                 product={product}
                 kind="3D"
@@ -549,11 +551,14 @@ export default function ProductWizard() {
                   setStep(1)
                 }
               />
+              </>
             )}
 
           {step === 3 &&
             productId && (
-              <ModelStep
+              <>
+                <GuideLink kind="AR" />
+                <ModelStep
                 productId={productId}
                 product={product}
                 kind="AR"
@@ -567,6 +572,7 @@ export default function ProductWizard() {
                   setStep(2)
                 }
               />
+              </>
             )}
 
           {step === 4 && (
@@ -1292,6 +1298,38 @@ function ImagesStep({
           بعدی
         </button>
       </div>
+    </div>
+  );
+}
+
+
+
+function GuideLink({ kind }: { kind: "3D" | "AR" }) {
+  return (
+    <div
+      style={{
+        marginBottom: 16,
+        padding: "12px 14px",
+        border: "1px solid #dbe3ec",
+        borderRadius: 14,
+        background: "#f8fafc",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        flexWrap: "wrap",
+      }}
+    >
+      <div style={{ fontSize: 13, lineHeight: 1.8, color: "#475569" }}>
+        قبل از آپلود، راهنمای کامل برداشت {kind === "AR" ? "3D و AR" : "مدل 3D"} را ببینید تا مدل با مقیاس واقعی آماده شود.
+      </div>
+      <a
+        href="#/seller/3d-ar-guide"
+        className="btn btn-outline btn-sm"
+        style={{ textDecoration: "none", whiteSpace: "nowrap" }}
+      >
+        مشاهده راهنما
+      </a>
     </div>
   );
 }

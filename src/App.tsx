@@ -24,6 +24,7 @@ import ProductWizard from "./pages/seller/ProductWizard";
 import SellerAnalytics from "./pages/seller/Analytics";
 import SellerSubscription from "./pages/seller/Subscription";
 import SellerProfile from "./pages/seller/Profile";
+import ThreeDArGuide from "./pages/seller/ThreeDArGuide";
 
 export default function App() {
   return (
@@ -56,6 +57,7 @@ export default function App() {
               <Route index element={<SellerOverview />} />
               <Route path="products" element={<SellerProducts />} />
               <Route path="products/new" element={<ProductWizard />} />
+              <Route path="3d-ar-guide" element={<ThreeDArGuide />} />
               <Route
                 path="products/:id/edit"
                 element={<ProductWizard />}
