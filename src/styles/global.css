@@ -108,3 +108,5 @@
 .app-shell .btn + .btn{margin-inline-start:8px;}
 .app-shell .tile-actions{gap:10px!important;padding:8px;}
 @media(max-width:520px){.dropzone{padding:22px 14px}.product-color-row{grid-template-columns:46px minmax(0,1fr);}.product-color-row .btn{grid-column:2;justify-self:start}}
+
+.image-tile.image-load-failed::after{content:"تصویر بارگذاری نشد";position:absolute;inset:0;display:grid;place-items:center;padding:8px;text-align:center;color:var(--neo-muted);font-size:12px;background:var(--neo-surface)}

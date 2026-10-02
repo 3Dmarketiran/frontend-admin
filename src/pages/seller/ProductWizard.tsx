@@ -114,7 +114,7 @@ export default function ProductWizard() {
 
     setTags(p.tags ?? "");
     setMaterial(p.material ?? "");
-    setColors(Array.isArray(p.colors) ? p.colors : []);
+    setColors(parseProductColors(p.colors));
     setPrice(p.price == null ? "" : String(p.price));
 
     setUnit(
@@ -1261,8 +1261,8 @@ function ImagesStep({
                   alt="تصویر محصول"
                   loading="lazy"
                   onError={(e) => {
-                    e.currentTarget.style.opacity =
-                      "0.35";
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.parentElement?.classList.add("image-load-failed");
                   }}
                 />
 
@@ -1779,6 +1779,17 @@ function UploadProgress({
   );
 }
 
+function parseProductColors(value: unknown): Array<{ name: string; value: string }> {
+  let parsed = value;
+  if (typeof parsed === "string") {
+    try { parsed = JSON.parse(parsed); } catch { return []; }
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter((item): item is { name: string; value: string } =>
+    Boolean(item) && typeof item.name === "string" && typeof item.value === "string"
+  ).map((item) => ({ name: item.name, value: item.value }));
+}
+
 function resolveAssetUrl(value: string): string {
   if (!value) return "";
   if (/^(https?:|data:|blob:)/i.test(value)) return value;
@@ -1802,8 +1813,9 @@ function uploadWithProgress<T = unknown>(
         `${API_URL}${path}`
       );
 
-      xhr.withCredentials =
-        true;
+      xhr.withCredentials = true;
+      // Model uploads may take longer on cold-start or slower networks.
+      xhr.timeout = 240000;
 
       const sessionId =
         getStoredSessionId();
