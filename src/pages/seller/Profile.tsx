@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../../lib/api";
+import { API_URL } from "../../lib/config";
 import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
 import { Spinner } from "../../components/ui";
@@ -7,6 +8,11 @@ import { useToast } from "../../lib/toast";
 import type { Category, Seller } from "../../types";
 
 type LogoUploadResponse = { seller: Seller };
+
+function resolveProfileAsset(value: string): string {
+  if (!value || /^(https?:|data:|blob:)/i.test(value)) return value;
+  try { return new URL(value, `${API_URL}/`).toString(); } catch { return value; }
+}
 
 function Icon({ name }: { name: "store" | "phone" | "mail" | "pin" | "image" }) {
   const paths = {
@@ -127,7 +133,7 @@ export default function SellerProfile() {
       <div className="content seller-profile-editor">
         <div className="seller-profile-hero card" style={{"--seller-theme": themeColor} as React.CSSProperties}>
           <div className="seller-profile-hero__avatar">
-            {logoPreview ? <img src={logoPreview} alt={seller.storeName} onError={(e) => { e.currentTarget.style.display="none"; }} /> : <Icon name="store" />}
+            {logoPreview ? <img src={resolveProfileAsset(logoPreview)} alt={seller.storeName} onError={(e) => { e.currentTarget.style.display="none"; }} /> : <Icon name="store" />}
           </div>
           <div className="seller-profile-hero__copy">
             <span className="seller-eyebrow">صفحه عمومی فروشگاه</span>
@@ -154,7 +160,7 @@ export default function SellerProfile() {
                 <div className="seller-card-heading"><div><span>اطلاعات اصلی</span><h3>پروفایل فروشگاه</h3></div><span className="seller-status">فعال</span></div>
                 <div className="seller-avatar-upload">
                   <div className="seller-avatar-upload__image">
-                    {logoPreview ? <img src={logoPreview} alt="پیش‌نمایش لوگو" /> : <Icon name="store" />}
+                    {logoPreview ? <img src={resolveProfileAsset(logoPreview)} alt="پیش‌نمایش لوگو" /> : <Icon name="store" />}
                   </div>
                   <div><strong>عکس پروفایل / لوگوی فروشگاه</strong><p>JPG، PNG یا WEBP — حداکثر ۵ مگابایت</p><input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { const f=e.target.files?.[0]; if(f) void uploadLogo(f); e.target.value=""; }} /><button type="button" className="btn btn-outline" onClick={() => logoInputRef.current?.click()}>انتخاب تصویر</button></div>
                 </div>
