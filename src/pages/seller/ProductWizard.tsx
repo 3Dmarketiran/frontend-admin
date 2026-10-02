@@ -33,8 +33,7 @@ const IMAGE_TYPES = [
 ];
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const MAX_MODEL_BYTES = 100 * 1024 * 1024;
-const MAX_ZIP_BYTES = 150 * 1024 * 1024;
+const MAX_MODEL_BYTES = 50 * 1024 * 1024;
 
 export default function ProductWizard() {
   const { id: routeId } = useParams();
@@ -1365,8 +1364,8 @@ function ModelStep({
 
   const accept =
     kind === "3D"
-      ? ".glb,.gltf,.zip"
-      : ".usdz,.zip";
+      ? ".glb,.gltf"
+      : ".usdz";
 
   const models =
     (product?.models ?? []).filter(
@@ -1385,46 +1384,27 @@ function ModelStep({
         .pop()
         ?.toLowerCase();
 
-    const isZip =
-      extension === "zip";
-
-    if (
-      isZip &&
-      file.size >
-        MAX_ZIP_BYTES
-    ) {
+    if (extension === "zip") {
       throw new Error(
-        "حجم ZIP بیشتر از 150MB است."
+        "آپلود ZIP غیرفعال است. فایل GLB، GLTF یا USDZ را جداگانه بارگذاری کنید."
       );
     }
 
-    if (
-      !isZip &&
-      file.size >
-        MAX_MODEL_BYTES
-    ) {
+    if (file.size > MAX_MODEL_BYTES) {
       throw new Error(
-        "حجم فایل مدل بیشتر از 100MB است."
+        "حجم هر فایل مدل نباید بیشتر از 50MB باشد."
       );
     }
 
     const fd =
       new FormData();
 
-    fd.append(
-      isZip
-        ? "modelZip"
-        : "model",
-      file
-    );
+    fd.append("model", file);
 
     setCurrentFile(file.name);
     setProgress(0);
 
-    const endpoint =
-      isZip
-        ? `/api/products/${productId}/models/zip`
-        : `/api/products/${productId}/models`;
+    const endpoint = `/api/products/${productId}/models`;
 
     await uploadWithProgress(
       endpoint,
@@ -1454,15 +1434,8 @@ function ModelStep({
 
     const allowed =
       kind === "3D"
-        ? [
-            "glb",
-            "gltf",
-            "zip",
-          ]
-        : [
-            "usdz",
-            "zip",
-          ];
+        ? ["glb", "gltf"]
+        : ["usdz"];
 
     if (
       !extension ||
@@ -1487,9 +1460,7 @@ function ModelStep({
       await onRefetch();
 
       push(
-        extension === "zip"
-          ? "فایل ZIP با موفقیت پردازش شد."
-          : "فایل مدل با موفقیت آپلود شد.",
+        "فایل مدل با موفقیت آپلود شد.",
         "success"
       );
     } catch (err) {
