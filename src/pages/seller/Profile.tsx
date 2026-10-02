@@ -24,6 +24,8 @@ export default function SellerProfile() {
   const { push } = useToast();
   const [seller, setSeller] = useState<Seller | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -33,21 +35,44 @@ export default function SellerProfile() {
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (!user?.seller?.id) { setLoading(false); return; }
-    Promise.all([
-      api.get<{ seller: Seller }>(`/api/sellers/${user.seller.id}`),
-      api.get<{ categories: Category[] }>("/api/categories"),
-    ])
-      .then(([sellerResponse, categoryResponse]) => {
-        setSeller(sellerResponse.seller);
-        setLogoPreview(sellerResponse.seller.logoUrl || null);
-        setCategories(categoryResponse.categories.filter((item) => item.isActive !== false));
-        setCategoryId(sellerResponse.seller.category?.id || "");
-        setThemeColor(sellerResponse.seller.themeColor || "#2e6fce");
+    let cancelled = false;
+    if (!user?.seller?.id) {
+      setLoadError("حساب کاربری به فروشگاه متصل نیست. لطفاً خارج شوید و دوباره وارد شوید.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setLoadError(null);
+    api.get<{ seller: Seller }>(`/api/sellers/${user.seller.id}`)
+      .then(async (sellerResponse) => {
+        if (cancelled) return;
+        const currentSeller = sellerResponse?.seller;
+        if (!currentSeller?.id) throw new Error("پاسخ سرور اطلاعات فروشگاه را برنگرداند.");
+        setSeller(currentSeller);
+        setLogoPreview(currentSeller.logoUrl || null);
+        setCategoryId(currentSeller.category?.id || "");
+        setThemeColor(currentSeller.themeColor || "#2e6fce");
+        try {
+          const categoryResponse = await api.get<{ categories: Category[] }>("/api/categories");
+          if (!cancelled) setCategories((categoryResponse.categories || []).filter((item) => item.isActive !== false));
+        } catch {
+          // Profile remains usable when the optional category list is unavailable.
+          if (!cancelled) setCategories([]);
+        }
       })
-      .catch((err) => push(err instanceof ApiError ? err.message : "خطا در دریافت اطلاعات فروشگاه.", "error"))
-      .finally(() => setLoading(false));
-  }, [user, push]);
+      .catch((err) => {
+        if (cancelled) return;
+        const message = err instanceof ApiError
+          ? `${err.message} (کد ${err.status || "اتصال"})`
+          : err instanceof Error ? err.message : "خطا در دریافت اطلاعات فروشگاه.";
+        setLoadError(message);
+        push(message, "error");
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [user?.seller?.id, reloadKey, push]);
 
   function revokePreview(url: string | null) {
     if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
@@ -93,7 +118,8 @@ export default function SellerProfile() {
     } finally { setSaving(false); }
   }
 
-  if (loading || !seller) return <><PageHeader title="پروفایل فروشگاه" /><div className="content"><Spinner /></div></>;
+  if (loading) return <><PageHeader title="پروفایل فروشگاه" /><div className="content"><Spinner /></div></>;
+  if (!seller) return <><PageHeader title="پروفایل فروشگاه" /><div className="content"><section className="card" role="alert" style={{padding:24, maxWidth:720, marginInline:"auto", textAlign:"center"}}><h3>اطلاعات فروشگاه بارگذاری نشد</h3><p style={{color:"var(--color-text-muted)", margin:"12px 0 20px"}}>{loadError || "ارتباط با سرور برقرار نشد."}</p><button type="button" className="btn btn-dark" onClick={() => setReloadKey((n) => n + 1)}>تلاش دوباره</button></section></div></>;
 
   return (
     <>
