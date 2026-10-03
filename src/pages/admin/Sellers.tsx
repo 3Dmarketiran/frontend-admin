@@ -30,6 +30,23 @@ export default function AdminSellers() {
   }
   useEffect(load, []);
 
+  async function deleteSeller(seller: Seller) {
+    const first = window.confirm(`حذف دائمی فروشگاه «${seller.storeName}»؟ محصولات، اشتراک‌ها و فایل‌های ذخیره‌شده آن نیز حذف می‌شوند.`);
+    if (!first) return;
+    const typed = window.prompt(`برای تأیید نهایی، نام فروشگاه را دقیقاً وارد کنید:\n${seller.storeName}`);
+    if (typed !== seller.storeName) {
+      if (typed !== null) push("نام واردشده مطابق نیست؛ حذف لغو شد.", "error");
+      return;
+    }
+    try {
+      await api.delete(`/api/sellers/${seller.id}`);
+      push("فروشگاه و فایل‌های وابسته حذف شدند.", "success");
+      load();
+    } catch (err) {
+      push(err instanceof ApiError ? err.message : "حذف فروشگاه انجام نشد.", "error");
+    }
+  }
+
   async function toggleActive(seller: Seller) {
     try {
       await api.put(`/api/sellers/${seller.id}`, { isActive: !seller.isActive });
@@ -72,6 +89,7 @@ export default function AdminSellers() {
                       <td style={{ display: "flex", gap: 6 }}>
                         <button className="btn btn-outline btn-sm" onClick={() => setActivateFor(s)}>فعال‌سازی اشتراک</button>
                         <button className="btn btn-outline btn-sm" onClick={() => toggleActive(s)}>{s.isActive ? "غیرفعال کن" : "فعال کن"}</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => deleteSeller(s)}>حذف دائمی</button>
                       </td>
                     </tr>
                   );
