@@ -806,6 +806,13 @@ export default function Subscription() {
         )}
       </section>
 
+      {/* Additional traffic bundles */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-bold text-slate-900">بسته‌های ترافیک اضافه</h2><p className="mt-1 text-sm text-slate-500">بسته فعال موردنظر را انتخاب و درخواست خرید را برای بررسی مدیر ثبت کنید.</p></div><span className="text-xs text-slate-500">{trafficLoading ? "در حال دریافت…" : `${traffic?.bundles.length ?? 0} بسته فعال`}</span></div>
+        {!trafficLoading && (traffic?.bundles.length ?? 0) === 0 ? <p className="text-sm text-slate-500">فعلاً بسته ترافیکی برای خرید ارائه نشده است.</p> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{(traffic?.bundles ?? []).map(bundle => <article key={bundle.id} className="rounded-xl border border-slate-200 p-4"><div className="font-bold text-slate-900">{bundle.name}</div><div className="mt-2 text-2xl font-black text-slate-900">{bundle.gigabytes} GB</div><div className="mt-1 text-sm text-slate-500">{formatPrice(bundle.priceToman)} تومان</div><button type="button" className="mt-4 w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={!activeSubscription || Boolean(traffic?.traffic.pendingPurchases)} onClick={async () => { try { await api.post("/api/traffic/purchases", { bundleId: bundle.id }); await loadTraffic(); } catch (e) { push(e instanceof ApiError ? e.message : "ثبت درخواست خرید ناموفق بود.", "error"); } }}>درخواست خرید بسته</button></article>)}</div>}
+        {traffic?.purchases?.length ? <div className="mt-5 border-t border-slate-100 pt-4"><h3 className="mb-2 text-sm font-bold">درخواست‌های اخیر</h3><div className="space-y-2">{traffic.purchases.slice(0,5).map(p => <div key={p.id} className="flex justify-between gap-3 text-sm"><span>{p.bundle?.name || `${p.gigabytes} GB`}</span><span className="text-slate-500">{p.status === "PENDING" ? "در انتظار بررسی" : p.status === "APPROVED" ? "تأیید شده" : "رد شده"}</span></div>)}</div></div> : null}
+      </section>
+
       {/* Manual activation notice */}
       <section className="rounded-2xl border border-sky-200 bg-sky-50 p-5">
         <div className="flex gap-3">

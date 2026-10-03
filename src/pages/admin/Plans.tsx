@@ -53,6 +53,7 @@ export default function AdminPlans() {
   const [editingCategory, setEditingCategory] = useState<PlanCategory | null>(null);
   const [trafficBundles, setTrafficBundles] = useState<TrafficBundle[]>([]);
   const [editingBundle, setEditingBundle] = useState<TrafficBundle | null>(null);
+  const [showBundleCreate, setShowBundleCreate] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -163,7 +164,7 @@ export default function AdminPlans() {
       </div>
 
       <div className="card" style={{ marginTop: 24 }}>
-        <div className="section-head"><div><h2>بسته‌های ترافیک اضافه</h2><div className="form-help">این قیمت‌ها مستقیماً برای خرید ترافیک فروشنده استفاده می‌شوند.</div></div></div>
+        <div className="section-head"><div><h2>بسته‌های ترافیک اضافه</h2><div className="form-help">بسته‌های فعال در سایت عمومی و پنل فروشنده نمایش داده می‌شوند.</div></div><button className="btn btn-primary btn-sm" onClick={() => setShowBundleCreate(true)}>＋ افزودن بسته ترافیک</button></div>
         <div className="grid grid-4">
           {trafficBundles.map(bundle => <div key={bundle.id} className="card" style={{ boxShadow: "none", border: "1px solid var(--color-border, #e5e7eb)" }}><div style={{ display:"flex", justifyContent:"space-between", gap:8 }}><strong>{bundle.name}</strong><span className={`badge ${bundle.isActive ? "badge-success" : "badge-muted"}`}>{bundle.isActive ? "فعال" : "غیرفعال"}</span></div><div style={{ marginTop:10, fontWeight:900 }}>{bundle.gigabytes} GB</div><div style={{ marginTop:4, color:"var(--color-text-muted)" }}>{bundle.priceToman.toLocaleString("fa-IR")} تومان</div><button className="btn btn-secondary btn-block btn-sm" style={{ marginTop:12 }} onClick={() => setEditingBundle(bundle)}>✎ ویرایش</button></div>)}
         </div>
@@ -173,7 +174,7 @@ export default function AdminPlans() {
       {editingPlan && <PlanModal mode="edit" initialPlan={editingPlan} categories={categories} onClose={() => setEditingPlan(null)} onSaved={() => { setEditingPlan(null); void load(); }} />}
       {showCategoryCreate && <CategoryModal mode="create" initialCategory={null} onClose={() => setShowCategoryCreate(false)} onSaved={() => { setShowCategoryCreate(false); void load(); }} />}
       {editingCategory && <CategoryModal mode="edit" initialCategory={editingCategory} onClose={() => setEditingCategory(null)} onSaved={() => { setEditingCategory(null); void load(); }} />}
-      {editingBundle && <TrafficBundleModal bundle={editingBundle} onClose={() => setEditingBundle(null)} onSaved={() => { setEditingBundle(null); void load(); }} />} 
+      {(showBundleCreate || editingBundle) && <TrafficBundleModal bundle={editingBundle} onClose={() => { setEditingBundle(null); setShowBundleCreate(false); }} onSaved={() => { setEditingBundle(null); setShowBundleCreate(false); void load(); }} />} 
     </>
   );
 }
@@ -286,16 +287,17 @@ function CategoryModal({ mode, initialCategory, onClose, onSaved }: { mode: "cre
 }
 
 
-function TrafficBundleModal({ bundle, onClose, onSaved }: { bundle: TrafficBundle; onClose: () => void; onSaved: () => void }) {
+function TrafficBundleModal({ bundle, onClose, onSaved }: { bundle: TrafficBundle | null; onClose: () => void; onSaved: () => void }) {
   const { push } = useToast();
-  const [form, setForm] = useState({ name: bundle.name, gigabytes: String(bundle.gigabytes), priceToman: String(bundle.priceToman), sortOrder: String(bundle.sortOrder), isActive: bundle.isActive });
+  const [form, setForm] = useState({ name: bundle?.name ?? "", gigabytes: String(bundle?.gigabytes ?? 5), priceToman: String(bundle?.priceToman ?? 0), sortOrder: String(bundle?.sortOrder ?? 0), isActive: bundle?.isActive ?? true });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setSaving(true); setError(null);
-    try { await api.put(`/api/traffic/admin/bundles/${bundle.id}`, { name: form.name.trim(), gigabytes: Number(form.gigabytes), priceToman: Number(form.priceToman), sortOrder: Number(form.sortOrder), isActive: form.isActive }); push("بسته ترافیک ویرایش شد.", "success"); onSaved(); }
+    const payload = { name: form.name.trim(), gigabytes: Number(form.gigabytes), priceToman: Number(form.priceToman), sortOrder: Number(form.sortOrder), isActive: form.isActive };
+    try { if (bundle) await api.put(`/api/traffic/admin/bundles/${bundle.id}`, payload); else await api.post("/api/traffic/admin/bundles", payload); push(bundle ? "بسته ترافیک ویرایش شد." : "بسته ترافیک ایجاد شد.", "success"); onSaved(); }
     catch (err) { setError(err instanceof ApiError ? err.message : "ذخیره بسته انجام نشد."); }
     finally { setSaving(false); }
   }
-  return <Modal title={`ویرایش «${bundle.name}»`} onClose={onClose}><form onSubmit={submit}>{error && <div className="alert alert-error">{error}</div>}<div className="form-group"><label>نام</label><input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div><div className="form-row"><div className="form-group"><label>حجم (GB)</label><input type="number" min={1} max={1000} required value={form.gigabytes} onChange={e=>setForm({...form,gigabytes:e.target.value})}/></div><div className="form-group"><label>قیمت (تومان)</label><input type="number" min={1} required value={form.priceToman} onChange={e=>setForm({...form,priceToman:e.target.value})}/></div></div><div className="form-row"><div className="form-group"><label>ترتیب</label><input type="number" min={0} value={form.sortOrder} onChange={e=>setForm({...form,sortOrder:e.target.value})}/></div><div className="form-group"><label>وضعیت</label><select value={form.isActive?"active":"inactive"} onChange={e=>setForm({...form,isActive:e.target.value==="active"})}><option value="active">فعال</option><option value="inactive">غیرفعال</option></select></div></div><div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:18}}><button className="btn btn-secondary" type="button" onClick={onClose}>انصراف</button><button className="btn btn-primary" type="submit" disabled={saving}>{saving?"در حال ذخیره…":"ذخیره"}</button></div></form></Modal>;
+  return <Modal title={bundle ? `ویرایش «${bundle.name}»` : "افزودن بسته ترافیک"} onClose={onClose}><form onSubmit={submit}>{error && <div className="alert alert-error">{error}</div>}<div className="form-group"><label>نام بسته</label><input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="مثلاً بسته ۱۰ گیگابایتی" /></div><div className="form-row"><div className="form-group"><label>حجم (GB)</label><input type="number" min={1} max={1000} required value={form.gigabytes} onChange={e=>setForm({...form,gigabytes:e.target.value})}/></div><div className="form-group"><label>قیمت (تومان)</label><input type="number" min={1} required value={form.priceToman} onChange={e=>setForm({...form,priceToman:e.target.value})}/></div></div><div className="form-row"><div className="form-group"><label>ترتیب نمایش</label><input type="number" min={0} value={form.sortOrder} onChange={e=>setForm({...form,sortOrder:e.target.value})}/></div><div className="form-group"><label>وضعیت</label><select value={form.isActive?"active":"inactive"} onChange={e=>setForm({...form,isActive:e.target.value==="active"})}><option value="active">فعال</option><option value="inactive">غیرفعال</option></select></div></div><div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:18}}><button className="btn btn-secondary" type="button" onClick={onClose}>انصراف</button><button className="btn btn-primary" type="submit" disabled={saving}>{saving?"در حال ذخیره…":"ذخیره"}</button></div></form></Modal>;
 }
