@@ -10,6 +10,7 @@ const ADMIN_NAV = [
   { to: "/admin/categories", label: "دسته‌بندی‌ها", icon: "folder" },
   { to: "/admin/subscriptions", label: "اشتراک‌ها", icon: "card" },
   { to: "/admin/plans", label: "پلن‌های اشتراک", icon: "layers" },
+  { to: "/admin/traffic", label: "پلن‌های ترافیک", icon: "chart" },
   { to: "/admin/publishing", label: "انتشار", icon: "send" },
   { to: "/admin/analytics", label: "آنالیتیکس", icon: "chart" },
   { to: "/admin/github", label: "GitHub", icon: "link" },

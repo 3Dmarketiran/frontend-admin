@@ -11,6 +11,7 @@ import AdminProducts from "./pages/admin/Products";
 import AdminCategories from "./pages/admin/Categories";
 import AdminSubscriptions from "./pages/admin/Subscriptions";
 import AdminPlans from "./pages/admin/Plans";
+import AdminTrafficBundles from "./pages/admin/TrafficBundles";
 import AdminPublishing from "./pages/admin/Publishing";
 import AdminAnalytics from "./pages/admin/Analytics";
 import AdminGitHubSettings from "./pages/admin/GitHubSettings";
@@ -45,6 +46,7 @@ export default function App() {
                 element={<AdminSubscriptions />}
               />
               <Route path="plans" element={<AdminPlans />} />
+              <Route path="traffic" element={<AdminTrafficBundles />} />
               <Route path="publishing" element={<AdminPublishing />} />
               <Route path="analytics" element={<AdminAnalytics />} />
               <Route path="github" element={<AdminGitHubSettings />} />
