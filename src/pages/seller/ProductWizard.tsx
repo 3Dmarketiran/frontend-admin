@@ -33,7 +33,6 @@ const IMAGE_TYPES = [
 ];
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const MAX_PRODUCT_IMAGES = 5;
 const MAX_MODEL_BYTES = 50 * 1024 * 1024;
 
 export default function ProductWizard() {
@@ -114,7 +113,7 @@ export default function ProductWizard() {
 
     setTags(p.tags ?? "");
     setMaterial(p.material ?? "");
-    setColors(parseProductColors(p.colors));
+    setColors(Array.isArray(p.colors) ? p.colors : []);
     setPrice(p.price == null ? "" : String(p.price));
 
     setUnit(
@@ -487,15 +486,15 @@ export default function ProductWizard() {
                   <label>رنگ محصول</label>
                   <div className="product-colors-list">
                     {colors.map((color, index) => (
-                      <div className="product-color-row" key={index}>
-                        <input type="color" title="برای انتخاب رنگ روی مربع رنگی بزنید" value={/^#[0-9a-fA-F]{6}$/.test(color.value) ? color.value : "#808080"} onChange={(e) => setColors((items) => items.map((item, i) => i === index ? { ...item, value: e.target.value } : item))} aria-label="انتخاب رنگ" />
+                      <div className="product-color-row" key={`${index}-${color.name}`}>
+                        <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(color.value) ? color.value : "#808080"} onChange={(e) => setColors((items) => items.map((item, i) => i === index ? { ...item, value: e.target.value } : item))} aria-label="انتخاب رنگ" />
                         <input value={color.name} onChange={(e) => setColors((items) => items.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} placeholder="نام رنگ" />
                         <button type="button" className="btn btn-outline btn-sm" onClick={() => setColors((items) => items.filter((_, i) => i !== index))}>حذف</button>
                       </div>
                     ))}
                   </div>
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => setColors((items) => [...items, { name: "", value: "#808080" }])}>+ افزودن رنگ</button>
-                  <div className="form-help">برای انتخاب رنگ روی مربع رنگی بزنید؛ کادر کنار آن نام رنگ است. می‌توانید چند رنگ تعریف کنید.</div>
+                  <div className="form-help">اختیاری است؛ می‌توانید صفر، یک یا چند رنگ برای یک محصول ثبت کنید.</div>
                 </div>
               </div>
 
@@ -1050,23 +1049,13 @@ function ImagesStep({
       return;
     }
 
-    const remaining = Math.max(0, MAX_PRODUCT_IMAGES - (product?.images?.length ?? 0));
-    if (remaining === 0) {
-      push("حداکثر ۵ تصویر برای هر محصول مجاز است. ابتدا یک تصویر حذف کنید.", "error");
-      return;
-    }
-    if (selected.length > remaining) {
-      push(`در حال حاضر فقط ${remaining} تصویر دیگر می‌توانید اضافه کنید؛ انتخاب‌های اضافی نادیده گرفته می‌شوند.`, "info");
-    }
-    const queue = selected.slice(0, remaining);
-
     setUploading(true);
 
     let uploaded = 0;
 
     try {
       for (
-        const file of queue
+        const file of selected
       ) {
         try {
           await uploadFile(file);
@@ -1150,22 +1139,7 @@ function ImagesStep({
   }
 
   const images =
-    [...(product?.images ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
-
-  async function moveImage(imageId: string, direction: -1 | 1) {
-    const from = images.findIndex((image) => image.id === imageId);
-    const to = from + direction;
-    if (from < 0 || to < 0 || to >= images.length) return;
-    const next = [...images];
-    [next[from], next[to]] = [next[to], next[from]];
-    try {
-      await api.post(`/api/products/${productId}/images/reorder`, { imageIds: next.map((image) => image.id) });
-      await onRefetch();
-      push("ترتیب تصاویر ذخیره شد.", "success");
-    } catch (err) {
-      push(err instanceof ApiError ? err.message : "ذخیره ترتیب تصاویر ناموفق بود.", "error");
-    }
-  }
+    product?.images ?? [];
 
   return (
     <div>
@@ -1175,7 +1149,9 @@ function ImagesStep({
           marginBottom: 10,
         }}
       >
-        تصاویر JPG، PNG یا WebP؛ حداکثر ۵ تصویر برای هر محصول و ۱۰MB برای هر تصویر. ترتیب فعلی تصاویر از شماره ترتیب ذخیره‌شده می‌آید.
+        تصاویر JPG، PNG یا WebP. حداکثر حجم هر
+        تصویر 10MB. تصاویر در سرور بهینه‌سازی
+        می‌شوند.
       </p>
 
       <label
@@ -1223,7 +1199,7 @@ function ImagesStep({
           accept="image/jpeg,image/png,image/webp"
           multiple
           hidden
-          disabled={uploading || images.length >= MAX_PRODUCT_IMAGES}
+          disabled={uploading}
           onChange={(e) => {
             if (e.target.files) {
               void onFiles(
@@ -1236,7 +1212,6 @@ function ImagesStep({
         />
       </label>
 
-      <div className="form-help image-count-note">تصاویر: {images.length} از {MAX_PRODUCT_IMAGES}</div>
       {uploading && (
         <UploadProgress
           progress={progress}
@@ -1257,18 +1232,16 @@ function ImagesStep({
                 }`}
               >
                 <img
-                  src={resolveAssetUrl(img.url)}
-                  alt="تصویر محصول"
+                  src={img.url}
+                  alt=""
                   loading="lazy"
                   onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                    e.currentTarget.parentElement?.classList.add("image-load-failed");
+                    e.currentTarget.style.opacity =
+                      "0.35";
                   }}
                 />
 
                 <div className="tile-actions">
-                  <button type="button" className="btn btn-sm btn-outline" disabled={uploading || images[0]?.id === img.id} aria-label="انتقال تصویر به قبل" onClick={() => void moveImage(img.id, -1)}>↑</button>
-                  <button type="button" className="btn btn-sm btn-outline" disabled={uploading || images[images.length - 1]?.id === img.id} aria-label="انتقال تصویر به بعد" onClick={() => void moveImage(img.id, 1)}>↓</button>
                   {!img.isPrimary && (
                     <button
                       className="btn btn-sm btn-primary"
@@ -1452,10 +1425,6 @@ function ModelStep({
     ) {
       return;
     }
-    if (models.length >= 1) {
-      push("برای هر بخش فقط یک فایل مدل مجاز است؛ ابتدا فایل قبلی را حذف کنید.", "error");
-      return;
-    }
 
     const extension =
       file.name
@@ -1544,8 +1513,8 @@ function ModelStep({
         }}
       >
         {kind === "3D"
-          ? "فقط یک فایل GLB یا GLTF (حداکثر ۵۰MB) برای هر محصول مجاز است."
-          : "فقط یک فایل USDZ (حداکثر ۵۰MB) برای واقعیت افزوده iOS مجاز است."}
+          ? "فایل GLB، GLTF یا ZIP شامل مدل‌های سه‌بعدی را آپلود کنید."
+          : "فایل USDZ یا ZIP شامل فایل‌های USDZ را برای واقعیت افزوده iOS آپلود کنید."}
       </p>
 
       <label
@@ -1575,9 +1544,11 @@ function ModelStep({
       >
         {uploading
           ? `در حال آپلود ${currentFile}`
-          : models.length >= 1
-            ? "برای جایگزینی، ابتدا فایل فعلی را حذف کنید"
-            : `برای انتخاب فایل ${kind === "3D" ? "GLB / GLTF" : "USDZ"} کلیک کنید یا فایل را اینجا رها کنید`}
+          : `برای انتخاب فایل ${
+              kind === "3D"
+                ? "GLB / GLTF / ZIP"
+                : "USDZ / ZIP"
+            } کلیک کنید یا فایل را اینجا رها کنید`}
 
         <small
           style={{
@@ -1586,14 +1557,14 @@ function ModelStep({
             opacity: 0.7,
           }}
         >
-          حداکثر حجم فایل: ۵۰MB — یک فایل در هر بخش
+          مدل حداکثر 100MB — ZIP حداکثر 150MB
         </small>
 
         <input
           type="file"
           accept={accept}
           hidden
-          disabled={uploading || models.length >= 1}
+          disabled={uploading}
           onChange={(e) => {
             if (e.target.files) {
               void onFile(
@@ -1779,23 +1750,6 @@ function UploadProgress({
   );
 }
 
-function parseProductColors(value: unknown): Array<{ name: string; value: string }> {
-  let parsed = value;
-  if (typeof parsed === "string") {
-    try { parsed = JSON.parse(parsed); } catch { return []; }
-  }
-  if (!Array.isArray(parsed)) return [];
-  return parsed.filter((item): item is { name: string; value: string } =>
-    Boolean(item) && typeof item.name === "string" && typeof item.value === "string"
-  ).map((item) => ({ name: item.name, value: item.value }));
-}
-
-function resolveAssetUrl(value: string): string {
-  if (!value) return "";
-  if (/^(https?:|data:|blob:)/i.test(value)) return value;
-  try { return new URL(value, `${API_URL}/`).toString(); } catch { return value; }
-}
-
 function uploadWithProgress<T = unknown>(
   path: string,
   formData: FormData,
@@ -1813,9 +1767,8 @@ function uploadWithProgress<T = unknown>(
         `${API_URL}${path}`
       );
 
-      xhr.withCredentials = true;
-      // Model uploads may take longer on cold-start or slower networks.
-      xhr.timeout = 240000;
+      xhr.withCredentials =
+        true;
 
       const sessionId =
         getStoredSessionId();

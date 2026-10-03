@@ -25,6 +25,13 @@ type UsageData = {
   } | null;
 };
 
+type TrafficBundle = { id: string; name: string; gigabytes: number; priceToman: number; isActive: boolean; };
+type TrafficPurchase = { id: string; gigabytes: number; priceToman: number; status: string; paymentReference?: string | null; requestedAt: string; bundle?: TrafficBundle; };
+type TrafficData = {
+  traffic: { periodStart: string; periodEnd: string; includedGb: number; purchasedGb: number; usedGb: number; remainingGb: number | null; usedPercent: number | null; warningLevel: string; plan: { name: string; trafficLimitGb: number | null } | null; pendingPurchases: number; };
+  purchases: TrafficPurchase[]; bundles: TrafficBundle[];
+};
+
 type SubscriptionResponse = Subscription & {
   plan?: SubscriptionPlan | null;
 };
@@ -141,6 +148,9 @@ export default function Subscription() {
   const [loading, setLoading] = useState(true);
   const [plansLoading, setPlansLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [trafficLoading, setTrafficLoading] = useState(true);
+  const [traffic, setTraffic] = useState<TrafficData | null>(null);
+  const [buyingBundleId, setBuyingBundleId] = useState<string | null>(null);
 
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -194,6 +204,18 @@ export default function Subscription() {
     }
   }, []);
 
+  const loadTraffic = useCallback(async () => {
+    if (!sellerId) return;
+    try {
+      const response = await api.get<TrafficData>(`/api/traffic/me`);
+      setTraffic(response);
+    } catch (err) {
+      push(err instanceof ApiError ? err.message : "دریافت وضعیت ترافیک انجام نشد.", "error");
+    } finally {
+      setTrafficLoading(false);
+    }
+  }, [sellerId, push]);
+
   const loadHistory = useCallback(async () => {
     if (!sellerId) return;
 
@@ -221,13 +243,15 @@ export default function Subscription() {
       setLoading(false);
       setPlansLoading(false);
       setHistoryLoading(false);
+      setTrafficLoading(false);
       return;
     }
 
     void loadUsage();
     void loadPlans();
     void loadHistory();
-  }, [sellerId, loadUsage, loadPlans, loadHistory]);
+    void loadTraffic();
+  }, [sellerId, loadUsage, loadPlans, loadHistory, loadTraffic]);
 
   const activeSubscription = usage?.subscription ?? null;
 

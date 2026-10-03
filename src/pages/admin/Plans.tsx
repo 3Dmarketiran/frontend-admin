@@ -14,6 +14,8 @@ type PlanCategory = {
   isActive: boolean;
 };
 
+type TrafficBundle = { id: string; name: string; gigabytes: number; priceToman: number; sortOrder: number; isActive: boolean; };
+
 type PlanForm = {
   name: string;
   durationDays: number;
@@ -21,8 +23,10 @@ type PlanForm = {
   discountPct: string;
   productLimit: string;
   storageLimitMb: string;
+  trafficLimitGb: string;
   categoryId: string;
   sortOrder: string;
+  isPublic: boolean;
 };
 
 const emptyForm: PlanForm = {
@@ -32,8 +36,10 @@ const emptyForm: PlanForm = {
   discountPct: "",
   productLimit: "",
   storageLimitMb: "",
+  trafficLimitGb: "",
   categoryId: "",
   sortOrder: "0",
+  isPublic: true,
 };
 
 export default function AdminPlans() {
@@ -45,16 +51,20 @@ export default function AdminPlans() {
   const [showCreate, setShowCreate] = useState(false);
   const [showCategoryCreate, setShowCategoryCreate] = useState(false);
   const [editingCategory, setEditingCategory] = useState<PlanCategory | null>(null);
+  const [trafficBundles, setTrafficBundles] = useState<TrafficBundle[]>([]);
+  const [editingBundle, setEditingBundle] = useState<TrafficBundle | null>(null);
 
   async function load() {
     setLoading(true);
     try {
-      const [r, categoryResponse] = await Promise.all([
+      const [r, categoryResponse, trafficResponse] = await Promise.all([
         api.get<{ plans: SubscriptionPlan[]; categories: PlanCategory[] }>("/api/subscriptions/plans"),
         api.get<{ categories: PlanCategory[] }>("/api/subscriptions/categories/manage"),
+        api.get<{ bundles: TrafficBundle[] }>("/api/traffic/bundles?includeInactive=true"),
       ]);
       setPlans(r.plans || []);
       setCategories(categoryResponse.categories || r.categories || []);
+      setTrafficBundles(trafficResponse.bundles || []);
     } catch (err) {
       push(err instanceof ApiError ? err.message : "خطا در دریافت پلن‌ها.", "error");
     } finally {
@@ -152,10 +162,18 @@ export default function AdminPlans() {
         )}
       </div>
 
+      <div className="card" style={{ marginTop: 24 }}>
+        <div className="section-head"><div><h2>بسته‌های ترافیک اضافه</h2><div className="form-help">این قیمت‌ها مستقیماً برای خرید ترافیک فروشنده استفاده می‌شوند.</div></div></div>
+        <div className="grid grid-4">
+          {trafficBundles.map(bundle => <div key={bundle.id} className="card" style={{ boxShadow: "none", border: "1px solid var(--color-border, #e5e7eb)" }}><div style={{ display:"flex", justifyContent:"space-between", gap:8 }}><strong>{bundle.name}</strong><span className={`badge ${bundle.isActive ? "badge-success" : "badge-muted"}`}>{bundle.isActive ? "فعال" : "غیرفعال"}</span></div><div style={{ marginTop:10, fontWeight:900 }}>{bundle.gigabytes} GB</div><div style={{ marginTop:4, color:"var(--color-text-muted)" }}>{bundle.priceToman.toLocaleString("fa-IR")} تومان</div><button className="btn btn-secondary btn-block btn-sm" style={{ marginTop:12 }} onClick={() => setEditingBundle(bundle)}>✎ ویرایش</button></div>)}
+        </div>
+      </div>
+
       {showCreate && <PlanModal mode="create" initialPlan={null} categories={categories} onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); void load(); }} />}
       {editingPlan && <PlanModal mode="edit" initialPlan={editingPlan} categories={categories} onClose={() => setEditingPlan(null)} onSaved={() => { setEditingPlan(null); void load(); }} />}
       {showCategoryCreate && <CategoryModal mode="create" initialCategory={null} onClose={() => setShowCategoryCreate(false)} onSaved={() => { setShowCategoryCreate(false); void load(); }} />}
       {editingCategory && <CategoryModal mode="edit" initialCategory={editingCategory} onClose={() => setEditingCategory(null)} onSaved={() => { setEditingCategory(null); void load(); }} />}
+      {editingBundle && <TrafficBundleModal bundle={editingBundle} onClose={() => setEditingBundle(null)} onSaved={() => { setEditingBundle(null); void load(); }} />} 
     </>
   );
 }
@@ -170,6 +188,7 @@ function PlanCard({ plan, onEdit }: { plan: SubscriptionPlan; onEdit: () => void
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
       <PlanMeta label="محصول" value={plan.productLimit ? plan.productLimit.toLocaleString("fa-IR") : "نامحدود"} />
       <PlanMeta label="فضا" value={plan.storageLimitMb ? formatStorage(plan.storageLimitMb) : "نامحدود"} />
+      <PlanMeta label="ترافیک ماهانه" value={plan.trafficLimitGb ? `${plan.trafficLimitGb} GB` : "نامحدود"} />
     </div>
     {plan.discountPct ? <span className="badge badge-info" style={{ width: "fit-content" }}>{plan.discountPct.toLocaleString("fa-IR")}% تخفیف</span> : null}
     <button className="btn btn-secondary btn-block" onClick={onEdit}>✎ ویرایش پلن</button>
@@ -192,8 +211,10 @@ function PlanModal({ mode, initialPlan, categories, onClose, onSaved }: { mode: 
     discountPct: initialPlan.discountPct == null ? "" : String(initialPlan.discountPct),
     productLimit: initialPlan.productLimit == null ? "" : String(initialPlan.productLimit),
     storageLimitMb: initialPlan.storageLimitMb == null ? "" : String(initialPlan.storageLimitMb),
+    trafficLimitGb: initialPlan.trafficLimitGb == null ? "" : String(initialPlan.trafficLimitGb),
     categoryId: initialPlan.categoryId || "",
     sortOrder: String(initialPlan.sortOrder ?? 0),
+    isPublic: initialPlan.isPublic !== false,
   } : { ...emptyForm, categoryId: categories[0]?.id || "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -205,7 +226,8 @@ function PlanModal({ mode, initialPlan, categories, onClose, onSaved }: { mode: 
       discountPct: form.discountPct === "" ? undefined : Number(form.discountPct),
       productLimit: form.productLimit === "" ? undefined : Number(form.productLimit),
       storageLimitMb: form.storageLimitMb === "" ? undefined : Number(form.storageLimitMb),
-      categoryId: form.categoryId || null, sortOrder: Number(form.sortOrder || 0),
+      trafficLimitGb: form.trafficLimitGb === "" ? undefined : Number(form.trafficLimitGb),
+      categoryId: form.categoryId || null, sortOrder: Number(form.sortOrder || 0), isPublic: form.isPublic,
     };
     try {
       if (mode === "create") { await api.post("/api/subscriptions/plans", body); push("پلن ایجاد شد.", "success"); }
@@ -222,7 +244,9 @@ function PlanModal({ mode, initialPlan, categories, onClose, onSaved }: { mode: 
       <div className="form-group"><label>دسته‌بندی</label><select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}><option value="">بدون دسته‌بندی</option>{categories.filter(c => c.isActive).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>{categories.length === 0 && <div className="form-help">ابتدا یک دسته‌بندی اشتراک بسازید.</div>}</div>
       <div className="form-row"><div className="form-group"><label>مدت (روز)</label><input type="number" required min={1} value={form.durationDays} onChange={(e) => setForm({ ...form, durationDays: Number(e.target.value) })} /></div><div className="form-group"><label>قیمت</label><input type="number" required min={0} value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} /></div></div>
       <div className="form-row"><div className="form-group"><label>تخفیف (%)</label><input type="number" min={0} max={100} value={form.discountPct} onChange={(e) => setForm({ ...form, discountPct: e.target.value })} placeholder="اختیاری" /></div><div className="form-group"><label>ترتیب پلن</label><input type="number" min={0} value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: e.target.value })} /></div></div>
-      <div className="form-row"><div className="form-group"><label>سقف محصول</label><input type="number" min={1} value={form.productLimit} onChange={(e) => setForm({ ...form, productLimit: e.target.value })} placeholder="خالی = نامحدود" /></div><div className="form-group"><label>فضای ذخیره‌سازی (MB)</label><input type="number" min={1} value={form.storageLimitMb} onChange={(e) => setForm({ ...form, storageLimitMb: e.target.value })} placeholder="مثلاً 10240" /></div></div>
+      <div className="form-row"><div className="form-group"><label>سقف محصول</label><input type="number" min={1} value={form.productLimit} onChange={(e) => setForm({ ...form, productLimit: e.target.value })} placeholder="خالی = نامحدود" /></div><div className="form-group"><label>فضای ذخیره‌سازی (MB)</label><input type="number" min={1} value={form.storageLimitMb} onChange={(e) => setForm({ ...form, storageLimitMb: e.target.value })} placeholder="مثلاً 5120" /></div></div>
+      <div className="form-group"><label>سقف ترافیک ماهانه (GB)</label><input type="number" min={1} value={form.trafficLimitGb} onChange={(e) => setForm({ ...form, trafficLimitGb: e.target.value })} placeholder="مثلاً 5" /><div className="form-help">سقف دانلود عمومی فایل‌های این فروشگاه در هر ماه. بعد از سقف، فقط با بسته ترافیک خریداری‌شده ادامه پیدا می‌کند.</div></div>
+      <div className="form-group" style={{ marginTop: 12 }}><label>نمایش در صفحه قیمت‌گذاری عمومی</label><select value={form.isPublic ? "yes" : "no"} onChange={(e) => setForm({ ...form, isPublic: e.target.value === "yes" })}><option value="yes">نمایش داده شود</option><option value="no">فقط برای مدیریت/اشتراک‌های قدیمی</option></select></div>
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}><button className="btn btn-secondary" type="button" onClick={onClose} disabled={submitting}>انصراف</button><button className="btn btn-primary" type="submit" disabled={submitting}>{submitting ? "در حال ذخیره…" : "ذخیره پلن"}</button></div>
     </form>
   </Modal>;
@@ -259,4 +283,19 @@ function CategoryModal({ mode, initialCategory, onClose, onSaved }: { mode: "cre
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}><button className="btn btn-secondary" type="button" onClick={onClose}>انصراف</button><button className="btn btn-primary" type="submit" disabled={submitting}>{submitting ? "در حال ذخیره…" : "ذخیره دسته‌بندی"}</button></div>
     </form>
   </Modal>;
+}
+
+
+function TrafficBundleModal({ bundle, onClose, onSaved }: { bundle: TrafficBundle; onClose: () => void; onSaved: () => void }) {
+  const { push } = useToast();
+  const [form, setForm] = useState({ name: bundle.name, gigabytes: String(bundle.gigabytes), priceToman: String(bundle.priceToman), sortOrder: String(bundle.sortOrder), isActive: bundle.isActive });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function submit(e: React.FormEvent) {
+    e.preventDefault(); setSaving(true); setError(null);
+    try { await api.put(`/api/traffic/admin/bundles/${bundle.id}`, { name: form.name.trim(), gigabytes: Number(form.gigabytes), priceToman: Number(form.priceToman), sortOrder: Number(form.sortOrder), isActive: form.isActive }); push("بسته ترافیک ویرایش شد.", "success"); onSaved(); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "ذخیره بسته انجام نشد."); }
+    finally { setSaving(false); }
+  }
+  return <Modal title={`ویرایش «${bundle.name}»`} onClose={onClose}><form onSubmit={submit}>{error && <div className="alert alert-error">{error}</div>}<div className="form-group"><label>نام</label><input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div><div className="form-row"><div className="form-group"><label>حجم (GB)</label><input type="number" min={1} max={1000} required value={form.gigabytes} onChange={e=>setForm({...form,gigabytes:e.target.value})}/></div><div className="form-group"><label>قیمت (تومان)</label><input type="number" min={1} required value={form.priceToman} onChange={e=>setForm({...form,priceToman:e.target.value})}/></div></div><div className="form-row"><div className="form-group"><label>ترتیب</label><input type="number" min={0} value={form.sortOrder} onChange={e=>setForm({...form,sortOrder:e.target.value})}/></div><div className="form-group"><label>وضعیت</label><select value={form.isActive?"active":"inactive"} onChange={e=>setForm({...form,isActive:e.target.value==="active"})}><option value="active">فعال</option><option value="inactive">غیرفعال</option></select></div></div><div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:18}}><button className="btn btn-secondary" type="button" onClick={onClose}>انصراف</button><button className="btn btn-primary" type="submit" disabled={saving}>{saving?"در حال ذخیره…":"ذخیره"}</button></div></form></Modal>;
 }

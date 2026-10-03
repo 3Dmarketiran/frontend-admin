@@ -15,14 +15,17 @@ export default function AdminSellers() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [activateFor, setActivateFor] = useState<Seller | null>(null);
+  const [trafficOverview, setTrafficOverview] = useState<any[]>([]);
+  const [pendingTraffic, setPendingTraffic] = useState<any[]>([]);
 
   function load() {
     setLoading(true);
     Promise.all([
       api.get<{ sellers: Seller[] }>("/api/sellers"),
       api.get<{ plans: SubscriptionPlan[]; categories?: PlanCategory[] }>("/api/subscriptions/plans"),
+      api.get<{ sellers: any[]; pendingPurchases: any[] }>("/api/traffic/admin/overview"),
     ])
-      .then(([s, p]) => { setSellers(s.sellers); setPlans(p.plans); setPlanCategories(p.categories || []); })
+      .then(([s, p, t]) => { setSellers(s.sellers); setPlans(p.plans); setPlanCategories(p.categories || []); setTrafficOverview(t.sellers || []); setPendingTraffic(t.pendingPurchases || []); })
       .finally(() => setLoading(false));
   }
   useEffect(load, []);
@@ -77,6 +80,14 @@ export default function AdminSellers() {
             </table>
           </div>
         )}
+      </div>
+
+      <div className="content" style={{ paddingTop: 0 }}>
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="section-head" style={{ marginBottom: 12 }}><div><h2>مصرف ترافیک فروشگاه‌ها</h2><div className="form-help">سقف ماهانه هر فروشگاه بر اساس پلن + بسته‌های تأییدشده نمایش داده می‌شود.</div></div></div>
+          <div className="table-wrap"><table><thead><tr><th>فروشگاه</th><th>پلن</th><th>سقف پایه</th><th>خرید اضافه</th><th>مصرف</th><th>باقی‌مانده</th><th>وضعیت</th></tr></thead><tbody>{trafficOverview.map(row => <tr key={row.sellerId}><td>{row.storeName}</td><td>{row.plan?.name || "—"}</td><td>{row.includedGb == null ? "نامحدود" : `${row.includedGb} GB`}</td><td>{row.purchasedGb} GB</td><td>{row.usedGb.toFixed(2)} GB</td><td>{row.remainingGb == null ? "نامحدود" : `${Math.max(0,row.remainingGb).toFixed(2)} GB`}</td><td><span className={`badge ${row.warningLevel === "EXCEEDED" ? "badge-error" : row.warningLevel === "DANGER" ? "badge-warning" : row.warningLevel === "WARNING" ? "badge-info" : "badge-success"}`}>{row.warningLevel === "EXCEEDED" ? "سقف" : row.warningLevel === "DANGER" ? "۸۵٪+" : row.warningLevel === "WARNING" ? "۷۰٪+" : "عادی"}</span></td></tr>)}</tbody></table></div>
+        </div>
+        {pendingTraffic.length > 0 && <div className="card"><div className="section-head"><div><h2>درخواست‌های ترافیک در انتظار تأیید</h2><div className="form-help">پس از دریافت و تأیید پرداخت، اعتبار به دوره جاری اضافه می‌شود.</div></div></div><div className="table-wrap"><table><thead><tr><th>فروشگاه</th><th>بسته</th><th>مبلغ</th><th>ثبت</th><th>عملیات</th></tr></thead><tbody>{pendingTraffic.map(item => <tr key={item.id}><td>{item.seller?.storeName || "—"}</td><td>{item.bundle?.name || `${item.gigabytes} GB`}</td><td>{item.priceToman.toLocaleString("fa-IR")} تومان</td><td>{fmtDate(item.requestedAt)}</td><td style={{display:"flex",gap:6}}><button className="btn btn-primary btn-sm" onClick={async()=>{ try { await api.post(`/api/traffic/admin/purchases/${item.id}/approve`,{}); push("بسته ترافیک تأیید شد.","success"); load(); } catch(err){ push(err instanceof ApiError ? err.message : "تأیید انجام نشد.","error"); } }}>تأیید پرداخت</button><button className="btn btn-outline btn-sm" onClick={async()=>{ try { await api.post(`/api/traffic/admin/purchases/${item.id}/reject`,{}); push("درخواست رد شد.","success"); load(); } catch(err){ push(err instanceof ApiError ? err.message : "رد درخواست انجام نشد.","error"); } }}>رد</button></td></tr>)}</tbody></table></div></div>}
       </div>
 
       {showCreate && <CreateSellerModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} />}

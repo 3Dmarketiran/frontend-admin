@@ -116,10 +116,12 @@ export interface SubscriptionPlan {
   discountPct: number | null;
   productLimit: number | null;
   storageLimitMb: number | null;
+  trafficLimitGb: number | null;
   categoryId: string | null;
   category?: { id: string; name: string; slug: string } | null;
   sortOrder: number;
   isActive: boolean;
+  isPublic: boolean;
 }
 
 export interface Subscription {

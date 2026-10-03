@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../../lib/api";
-import { API_URL } from "../../lib/config";
 import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
 import { Spinner } from "../../components/ui";
@@ -8,11 +7,6 @@ import { useToast } from "../../lib/toast";
 import type { Category, Seller } from "../../types";
 
 type LogoUploadResponse = { seller: Seller };
-
-function resolveProfileAsset(value: string): string {
-  if (!value || /^(https?:|data:|blob:)/i.test(value)) return value;
-  try { return new URL(value, `${API_URL}/`).toString(); } catch { return value; }
-}
 
 function Icon({ name }: { name: "store" | "phone" | "mail" | "pin" | "image" }) {
   const paths = {
@@ -30,57 +24,30 @@ export default function SellerProfile() {
   const { push } = useToast();
   const [seller, setSeller] = useState<Seller | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [logoLoadFailed, setLogoLoadFailed] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [themeColor, setThemeColor] = useState("#2e6fce");
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    if (!user?.seller?.id) {
-      setLoadError("حساب کاربری به فروشگاه متصل نیست. لطفاً خارج شوید و دوباره وارد شوید.");
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setLoadError(null);
-    api.get<{ seller: Seller }>(`/api/sellers/${user.seller.id}`)
-      .then(async (sellerResponse) => {
-        if (cancelled) return;
-        const currentSeller = sellerResponse?.seller;
-        if (!currentSeller?.id) throw new Error("پاسخ سرور اطلاعات فروشگاه را برنگرداند.");
-        setSeller(currentSeller);
-        setLogoPreview(currentSeller.logoUrl || null);
-        setLogoLoadFailed(false);
-        setCategoryId(currentSeller.category?.id || "");
-        setThemeColor(currentSeller.themeColor || "#2e6fce");
-        try {
-          const categoryResponse = await api.get<{ categories: Category[] }>("/api/categories");
-          if (!cancelled) setCategories((categoryResponse.categories || []).filter((item) => item.isActive !== false));
-        } catch {
-          // Profile remains usable when the optional category list is unavailable.
-          if (!cancelled) setCategories([]);
-        }
+    if (!user?.seller?.id) { setLoading(false); return; }
+    Promise.all([
+      api.get<{ seller: Seller }>(`/api/sellers/${user.seller.id}`),
+      api.get<{ categories: Category[] }>("/api/categories"),
+    ])
+      .then(([sellerResponse, categoryResponse]) => {
+        setSeller(sellerResponse.seller);
+        setLogoPreview(sellerResponse.seller.logoUrl || null);
+        setCategories(categoryResponse.categories.filter((item) => item.isActive !== false));
+        setCategoryId(sellerResponse.seller.category?.id || "");
+        setThemeColor(sellerResponse.seller.themeColor || "#2e6fce");
       })
-      .catch((err) => {
-        if (cancelled) return;
-        const message = err instanceof ApiError
-          ? `${err.message} (کد ${err.status || "اتصال"})`
-          : err instanceof Error ? err.message : "خطا در دریافت اطلاعات فروشگاه.";
-        setLoadError(message);
-        push(message, "error");
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-
-    return () => { cancelled = true; };
-  }, [user?.seller?.id, reloadKey, push]);
+      .catch((err) => push(err instanceof ApiError ? err.message : "خطا در دریافت اطلاعات فروشگاه.", "error"))
+      .finally(() => setLoading(false));
+  }, [user, push]);
 
   function revokePreview(url: string | null) {
     if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
@@ -95,7 +62,7 @@ export default function SellerProfile() {
     try {
       const formData = new FormData(); formData.append("logo", file);
       const result = await api.upload<LogoUploadResponse>(`/api/sellers/${seller.id}/logo`, formData);
-      setSeller(result.seller); revokePreview(localPreview); setLogoPreview(result.seller.logoUrl || null); setLogoLoadFailed(false);
+      setSeller(result.seller); revokePreview(localPreview); setLogoPreview(result.seller.logoUrl || null);
       push("لوگوی فروشگاه با موفقیت آپلود شد.", "success");
     } catch (err) {
       revokePreview(localPreview); setLogoPreview(seller.logoUrl || null);
@@ -126,8 +93,7 @@ export default function SellerProfile() {
     } finally { setSaving(false); }
   }
 
-  if (loading) return <><PageHeader title="پروفایل فروشگاه" /><div className="content"><Spinner /></div></>;
-  if (!seller) return <><PageHeader title="پروفایل فروشگاه" /><div className="content"><section className="card" role="alert" style={{padding:24, maxWidth:720, marginInline:"auto", textAlign:"center"}}><h3>اطلاعات فروشگاه بارگذاری نشد</h3><p style={{color:"var(--color-text-muted)", margin:"12px 0 20px"}}>{loadError || "ارتباط با سرور برقرار نشد."}</p><button type="button" className="btn btn-dark" onClick={() => setReloadKey((n) => n + 1)}>تلاش دوباره</button></section></div></>;
+  if (loading || !seller) return <><PageHeader title="پروفایل فروشگاه" /><div className="content"><Spinner /></div></>;
 
   return (
     <>
@@ -135,7 +101,7 @@ export default function SellerProfile() {
       <div className="content seller-profile-editor">
         <div className="seller-profile-hero card" style={{"--seller-theme": themeColor} as React.CSSProperties}>
           <div className="seller-profile-hero__avatar">
-            {logoPreview && !logoLoadFailed ? <img src={resolveProfileAsset(logoPreview)} alt={seller.storeName} onError={() => setLogoLoadFailed(true)} /> : <Icon name="store" />}
+            {logoPreview ? <img src={logoPreview} alt={seller.storeName} onError={(e) => { e.currentTarget.style.display="none"; }} /> : <Icon name="store" />}
           </div>
           <div className="seller-profile-hero__copy">
             <span className="seller-eyebrow">صفحه عمومی فروشگاه</span>
@@ -162,7 +128,7 @@ export default function SellerProfile() {
                 <div className="seller-card-heading"><div><span>اطلاعات اصلی</span><h3>پروفایل فروشگاه</h3></div><span className="seller-status">فعال</span></div>
                 <div className="seller-avatar-upload">
                   <div className="seller-avatar-upload__image">
-                    {logoPreview && !logoLoadFailed ? <img src={resolveProfileAsset(logoPreview)} alt="پیش‌نمایش لوگو" onError={() => setLogoLoadFailed(true)} /> : <Icon name="store" />}
+                    {logoPreview ? <img src={logoPreview} alt="پیش‌نمایش لوگو" /> : <Icon name="store" />}
                   </div>
                   <div><strong>عکس پروفایل / لوگوی فروشگاه</strong><p>JPG، PNG یا WEBP — حداکثر ۵ مگابایت</p><input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { const f=e.target.files?.[0]; if(f) void uploadLogo(f); e.target.value=""; }} /><button type="button" className="btn btn-outline" onClick={() => logoInputRef.current?.click()}>انتخاب تصویر</button></div>
                 </div>

@@ -31,7 +31,7 @@ export default function AdminBranding() {
         colorText: settings.colorText,
         fontFamily: settings.fontFamily,
         contactEmail: settings.contactEmail || undefined,
-        contactPhone: (settings.contactPhone || "09129536122").trim(),
+        contactPhone: settings.contactPhone || undefined,
       });
       push("تنظیمات برندینگ ذخیره شد.", "success");
     } catch (err) {
@@ -71,7 +71,7 @@ export default function AdminBranding() {
           <div className="form-group"><label>فونت</label><input value={settings.fontFamily} onChange={(e) => setSettings({ ...settings, fontFamily: e.target.value })} /></div>
           <div className="form-row">
             <div className="form-group"><label>ایمیل تماس عمومی</label><input type="email" value={settings.contactEmail ?? ""} onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })} /></div>
-            <div className="form-group"><label>تلفن تماس عمومی</label><input value={settings.contactPhone ?? "09129536122"} onChange={(e) => setSettings({ ...settings, contactPhone: e.target.value })} /></div>
+            <div className="form-group"><label>تلفن تماس عمومی</label><input value={settings.contactPhone ?? ""} onChange={(e) => setSettings({ ...settings, contactPhone: e.target.value })} /></div>
           </div>
           <button className="btn btn-primary" disabled={saving} type="submit">{saving ? "در حال ذخیره..." : "ذخیره تغییرات"}</button>
           <p className="form-help">این تنظیمات در انتشار بعدی روی <code>settings.json</code> وب‌سایت عمومی اعمال می‌شود.</p>

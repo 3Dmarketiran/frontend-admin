@@ -18,7 +18,7 @@ export function StatCard({
       <div className="stat-card-glow" />
 
       <div className="stat-card-top">
-        <div className="stat-card-icon" style={{ display: "grid", placeItems: "center", lineHeight: 1, textAlign: "center" }}>
+        <div className="stat-card-icon">
           {icon || "✦"}
         </div>
 
@@ -196,7 +196,7 @@ export function EmptyState({
   return (
     <div className="empty-state">
       <div className="empty-state-visual">
-        <div className="empty-state-icon" aria-hidden style={{ display: "grid", placeItems: "center", lineHeight: 1, textAlign: "center" }}>
+        <div className="empty-state-icon" aria-hidden>
           {icon}
         </div>
       </div>
