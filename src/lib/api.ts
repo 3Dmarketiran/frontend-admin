@@ -1,6 +1,8 @@
 import { API_URL } from "./config";
 
 const AUTH_STORAGE_KEY = "platform_session_id";
+const API_REQUEST_TIMEOUT_MS = 15_000;
+const API_UPLOAD_TIMEOUT_MS = 120_000;
 
 export class ApiError extends Error {
   status: number;
@@ -121,19 +123,39 @@ async function request<T>(
   let lastError: unknown = null;
   const maxAttempts = path === "/api/auth/login" ? 4 : 2;
 
+  const timeoutMs = isFormDataBody(body) ? API_UPLOAD_TIMEOUT_MS : API_REQUEST_TIMEOUT_MS;
+
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
     try {
-      res = await fetch(`${API_URL}${path}`, { ...init, credentials: "include", headers });
+      res = await fetch(`${API_URL}${path}`, {
+        ...init,
+        credentials: "include",
+        headers,
+        signal: controller.signal,
+      });
       if (![502, 503, 504].includes(res.status) || attempt === maxAttempts - 1) break;
     } catch (error) {
       lastError = error;
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new ApiError(408, isFormDataBody(body)
+          ? "ارتباط با API برای آپلود بیشتر از حد مجاز طول کشید. اتصال و آدرس API را بررسی کنید و دوباره تلاش کنید."
+          : "پاسخی از API دریافت نشد. آدرس API یا وضعیت سرور را بررسی کنید و دوباره تلاش کنید.");
+      }
       if (attempt === maxAttempts - 1) break;
+    } finally {
+      window.clearTimeout(timeoutId);
     }
     await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
   }
 
   if (!res) {
-    throw new ApiError(0, "سرور موقتاً در دسترس نبود؛ اتصال دوباره در حال انجام است. اگر ادامه داشت، آدرس API را بررسی کنید.");
+    const detail = lastError instanceof Error ? lastError.message : "";
+    throw new ApiError(0, detail
+      ? `اتصال به API برقرار نشد. آدرس API را بررسی کنید (${API_URL}).`
+      : `API پاسخ نداد. آدرس API را بررسی کنید (${API_URL}).`);
   }
 
   const data = await parseResponse(res);

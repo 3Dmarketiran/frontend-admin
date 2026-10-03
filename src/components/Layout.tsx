@@ -1,4 +1,3 @@
-import logo3d from "../assets/3dmarket-logo-3d.png";
 import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
@@ -86,7 +85,7 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
       {menuOpen && <button className="mobile-menu-backdrop" aria-label="بستن منو" onClick={() => setMenuOpen(false)} />}
       <aside className={`sidebar${menuOpen ? " open" : ""}`}>
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true"><img src={logo3d} alt="" width={40} height={40} /></span>
+          <span className="brand-mark" aria-hidden="true">3D</span>
           <span>3DMarketiran</span>
         </div>
         <div className="sidebar-heading">{area === "admin" ? "مدیریت پلتفرم" : "مدیریت فروشگاه"}</div>

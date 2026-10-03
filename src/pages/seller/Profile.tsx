@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { api, ApiError } from "../../lib/api";
+import { api, ApiError, API_URL } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
 import { Spinner } from "../../components/ui";
@@ -30,24 +30,61 @@ export default function SellerProfile() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [themeColor, setThemeColor] = useState("#2e6fce");
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [apiStatus, setApiStatus] = useState<"checking" | "ok" | "error">("checking");
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => {
-    if (!user?.seller?.id) { setLoading(false); return; }
-    Promise.all([
-      api.get<{ seller: Seller }>(`/api/sellers/${user.seller.id}`),
+  async function loadProfile() {
+    const sellerId = user?.seller?.id;
+    if (!sellerId) {
+      setLoading(false);
+      setProfileError("حساب فروشنده به یک فروشگاه متصل نیست.");
+      setApiStatus("error");
+      return;
+    }
+
+    setLoading(true);
+    setProfileError(null);
+    setApiStatus("checking");
+
+    const [health, sellerResponse, categoryResponse] = await Promise.allSettled([
+      api.get<{ status: string }>("/api/health/live"),
+      api.get<{ seller: Seller }>(`/api/sellers/${sellerId}`),
       api.get<{ categories: Category[] }>("/api/categories"),
-    ])
-      .then(([sellerResponse, categoryResponse]) => {
-        setSeller(sellerResponse.seller);
-        setLogoPreview(sellerResponse.seller.logoUrl || null);
-        setCategories(categoryResponse.categories.filter((item) => item.isActive !== false));
-        setCategoryId(sellerResponse.seller.category?.id || "");
-        setThemeColor(sellerResponse.seller.themeColor || "#2e6fce");
-      })
-      .catch((err) => push(err instanceof ApiError ? err.message : "خطا در دریافت اطلاعات فروشگاه.", "error"))
-      .finally(() => setLoading(false));
-  }, [user, push]);
+    ]);
+
+    setApiStatus(health.status === "fulfilled" && health.value.status === "ok" ? "ok" : "error");
+
+    if (sellerResponse.status === "rejected") {
+      setProfileError(
+        sellerResponse.reason instanceof ApiError
+          ? sellerResponse.reason.message
+          : "خطا در دریافت اطلاعات فروشگاه."
+      );
+      setSeller(null);
+      setLoading(false);
+      return;
+    }
+
+    const sellerData = sellerResponse.value.seller;
+    setSeller(sellerData);
+    setLogoPreview(sellerData.logoUrl || null);
+    setCategoryId(sellerData.category?.id || "");
+    setThemeColor(sellerData.themeColor || "#2e6fce");
+
+    if (categoryResponse.status === "fulfilled") {
+      setCategories(categoryResponse.value.categories.filter((item) => item.isActive !== false));
+    } else {
+      setCategories([]);
+      push("اطلاعات فروشگاه دریافت شد، اما فهرست دسته‌بندی‌ها در دسترس نیست.", "error");
+    }
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    void loadProfile();
+  }, [user]);
 
   function revokePreview(url: string | null) {
     if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
@@ -93,12 +130,51 @@ export default function SellerProfile() {
     } finally { setSaving(false); }
   }
 
-  if (loading || !seller) return <><PageHeader title="پروفایل فروشگاه" /><div className="content"><Spinner /></div></>;
+  if (loading) return (
+    <>
+      <PageHeader title="پروفایل فروشگاه" />
+      <div className="content">
+        <div className="profile-loading-card card"><Spinner /><strong>در حال دریافت اطلاعات فروشگاه…</strong><span>ارتباط با API حداکثر چند ثانیه بررسی می‌شود.</span></div>
+      </div>
+    </>
+  );
+
+  if (!seller) return (
+    <>
+      <PageHeader title="پروفایل فروشگاه" />
+      <div className="content">
+        <section className="card profile-api-error-card">
+          <div className="profile-api-error-card__icon">!</div>
+          <div className="profile-api-error-card__copy">
+            <strong>دریافت اطلاعات فروشگاه ناموفق بود.</strong>
+            <p>{profileError || "API پاسخ قابل استفاده‌ای برنگرداند."}</p>
+            <div className="profile-api-meta">
+              <span>آدرس API</span>
+              <code>{API_URL}</code>
+              <span className={apiStatus === "ok" ? "is-ok" : apiStatus === "checking" ? "is-checking" : "is-error"}>
+                {apiStatus === "ok" ? "اتصال برقرار" : apiStatus === "checking" ? "در حال بررسی" : "اتصال ناموفق"}
+              </span>
+            </div>
+            <button type="button" className="btn btn-primary" onClick={() => void loadProfile()}>تلاش دوباره</button>
+          </div>
+        </section>
+      </div>
+    </>
+  );
 
   return (
     <>
       <PageHeader title="پروفایل فروشگاه" />
       <div className="content seller-profile-editor">
+        <div className={`profile-api-status profile-api-status--${apiStatus}`}>
+          <span className="profile-api-status__dot" aria-hidden="true" />
+          <div>
+            <strong>اتصال API پروفایل</strong>
+            <span>{apiStatus === "ok" ? "برقرار" : apiStatus === "checking" ? "در حال بررسی" : "ناموفق"}</span>
+          </div>
+          <code>{API_URL}</code>
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => void loadProfile()}>بررسی دوباره</button>
+        </div>
         <div className="seller-profile-hero card" style={{"--seller-theme": themeColor} as React.CSSProperties}>
           <div className="seller-profile-hero__avatar">
             {logoPreview ? <img src={logoPreview} alt={seller.storeName} onError={(e) => { e.currentTarget.style.display="none"; }} /> : <Icon name="store" />}

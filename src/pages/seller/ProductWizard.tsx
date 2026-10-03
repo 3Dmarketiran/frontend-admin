@@ -34,6 +34,9 @@ const IMAGE_TYPES = [
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_MODEL_BYTES = 50 * 1024 * 1024;
+const MAX_PRODUCT_IMAGES = 5;
+const MAX_PRODUCT_3D_MODELS = 1;
+const MAX_PRODUCT_USDZ_MODELS = 1;
 
 export default function ProductWizard() {
   const { id: routeId } = useParams();
@@ -1049,6 +1052,18 @@ function ImagesStep({
       return;
     }
 
+    const currentCount = product?.images?.length ?? 0;
+    const availableSlots = MAX_PRODUCT_IMAGES - currentCount;
+    if (selected.length > availableSlots) {
+      push(
+        availableSlots <= 0
+          ? "سقف ۵ تصویر این محصول تکمیل شده است. برای افزودن تصویر جدید، ابتدا یکی از تصاویر را حذف کنید."
+          : `برای این محصول فقط ${availableSlots} جای تصویر باقی مانده است. حداکثر ۵ تصویر مجاز است.`,
+        "error"
+      );
+      return;
+    }
+
     setUploading(true);
 
     let uploaded = 0;
@@ -1149,15 +1164,13 @@ function ImagesStep({
           marginBottom: 10,
         }}
       >
-        تصاویر JPG، PNG یا WebP. حداکثر حجم هر
-        تصویر 10MB. تصاویر در سرور بهینه‌سازی
-        می‌شوند.
+        تصاویر JPG، PNG یا WebP. حداکثر ۵ تصویر برای هر محصول و حداکثر حجم هر تصویر 10MB. تصاویر در سرور بهینه‌سازی می‌شوند.
       </p>
 
       <label
         className={`dropzone ${
           dragging ? "dragging" : ""
-        }`}
+        } ${images.length >= MAX_PRODUCT_IMAGES ? "is-full" : ""}`}
         onDragOver={(e) => {
           e.preventDefault();
 
@@ -1181,7 +1194,9 @@ function ImagesStep({
       >
         {uploading
           ? `در حال آپلود ${currentFile}`
-          : "برای انتخاب یک یا چند تصویر کلیک کنید یا تصاویر را اینجا رها کنید"}
+          : images.length >= MAX_PRODUCT_IMAGES
+            ? "سقف ۵ تصویر این محصول تکمیل شده است"
+            : "برای انتخاب یک یا چند تصویر کلیک کنید یا تصاویر را اینجا رها کنید"}
 
         <small
           style={{
@@ -1190,7 +1205,7 @@ function ImagesStep({
             opacity: 0.7,
           }}
         >
-          JPG / PNG / WebP — حداکثر 10MB برای هر فایل
+          {product?.images?.length ?? 0} / ۵ تصویر — JPG / PNG / WebP — حداکثر 10MB برای هر فایل
         </small>
 
         <input
@@ -1426,6 +1441,16 @@ function ModelStep({
       return;
     }
 
+    if (models.length >= (kind === "3D" ? MAX_PRODUCT_3D_MODELS : MAX_PRODUCT_USDZ_MODELS)) {
+      push(
+        kind === "3D"
+          ? "این محصول فقط یک فایل GLB/GLTF می‌پذیرد. برای جایگزینی، ابتدا فایل سه‌بعدی فعلی را حذف کنید."
+          : "این محصول فقط یک فایل USDZ می‌پذیرد. برای جایگزینی، ابتدا فایل USDZ فعلی را حذف کنید.",
+        "error"
+      );
+      return;
+    }
+
     const extension =
       file.name
         .split(".")
@@ -1513,14 +1538,14 @@ function ModelStep({
         }}
       >
         {kind === "3D"
-          ? "فایل GLB، GLTF یا ZIP شامل مدل‌های سه‌بعدی را آپلود کنید."
-          : "فایل USDZ یا ZIP شامل فایل‌های USDZ را برای واقعیت افزوده iOS آپلود کنید."}
+          ? "یک فایل GLB یا GLTF برای نمایش سه‌بعدی محصول آپلود کنید. حداکثر ۱ فایل مجاز است."
+          : "یک فایل USDZ برای واقعیت افزوده iOS آپلود کنید. حداکثر ۱ فایل مجاز است."}
       </p>
 
       <label
         className={`dropzone ${
           dragging ? "dragging" : ""
-        }`}
+        } ${models.length >= (kind === "3D" ? MAX_PRODUCT_3D_MODELS : MAX_PRODUCT_USDZ_MODELS) ? "is-full" : ""}`}
         onDragOver={(e) => {
           e.preventDefault();
 
@@ -1544,11 +1569,13 @@ function ModelStep({
       >
         {uploading
           ? `در حال آپلود ${currentFile}`
-          : `برای انتخاب فایل ${
-              kind === "3D"
-                ? "GLB / GLTF / ZIP"
-                : "USDZ / ZIP"
-            } کلیک کنید یا فایل را اینجا رها کنید`}
+          : models.length >= (kind === "3D" ? MAX_PRODUCT_3D_MODELS : MAX_PRODUCT_USDZ_MODELS)
+            ? "سقف این نوع فایل تکمیل شده است"
+            : `برای انتخاب فایل ${
+                kind === "3D"
+                  ? "GLB / GLTF"
+                  : "USDZ"
+              } کلیک کنید یا فایل را اینجا رها کنید`}
 
         <small
           style={{
@@ -1557,7 +1584,7 @@ function ModelStep({
             opacity: 0.7,
           }}
         >
-          مدل حداکثر 100MB — ZIP حداکثر 150MB
+          {models.length > 0 ? "فایل موجود است؛ برای جایگزینی ابتدا حذف کنید." : "حداکثر ۱ فایل — حجم هر فایل 50MB"}
         </small>
 
         <input
