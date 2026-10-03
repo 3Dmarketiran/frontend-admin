@@ -1,0 +1,19 @@
+/* 3DMarketIran — final admin/seller visitor QA layer */
+:focus-visible{outline:3px solid rgba(34,52,143,.32)!important;outline-offset:3px}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{border-radius:12px}
+.btn{min-height:44px}
+.btn-sm{min-height:38px}
+.form-group input,.form-group select,.form-group textarea,.input-with-icon{min-height:44px}
+.form-group textarea{min-height:96px;resize:vertical}
+@media(max-width:800px){
+  .content{padding:18px 12px}
+  .page-header-wrap{padding:17px 12px 6px}
+  .grid{gap:12px}
+  .topbar{padding-inline:12px}
+}
+@media(max-width:520px){
+  .content{padding-inline:10px}
+  .page-header-wrap{padding-inline:10px}
+  .btn{min-height:44px}
+  .seller-save-bar{padding:14px}
+}
