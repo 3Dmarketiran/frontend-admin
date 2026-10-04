@@ -202,12 +202,12 @@ export default function Products() {
   const loadJobs = useCallback(async () => {
     try {
       const response = await api.get<
-        PublishJob[] | { items?: PublishJob[] }
+        PublishJob[] | { jobs?: PublishJob[]; items?: PublishJob[] }
       >("/api/publishing/jobs");
 
       const items = Array.isArray(response)
         ? response
-        : response.items ?? [];
+        : response.jobs ?? response.items ?? [];
 
       setJobs(items);
     } catch {
@@ -235,8 +235,7 @@ export default function Products() {
     if (!sellerId) return;
 
     const interval = window.setInterval(() => {
-      void loadJobs();
-      void loadUsage();
+      void Promise.all([loadProducts(), loadJobs(), loadUsage()]);
     }, 5000);
 
     return () => window.clearInterval(interval);
@@ -285,8 +284,7 @@ export default function Products() {
   const canCreateProduct =
     hasActiveSubscription && !productLimitReached;
 
-  const canPublish =
-    hasActiveSubscription && !storageLimitReached;
+  const canPublish = hasActiveSubscription;
 
   const counts = useMemo(
     () => ({
@@ -307,7 +305,7 @@ export default function Products() {
   async function handlePublish(product: Product) {
     if (!canPublish) {
       push(
-        "برای انتشار محصول باید اشتراک فعال داشته باشید و ظرفیت ذخیره‌سازی شما تکمیل نشده باشد.",
+        "برای انتشار محصول باید اشتراک فعال داشته باشید.",
       "error",
       );
       return;
@@ -346,7 +344,7 @@ export default function Products() {
 
       await api.post(`/api/products/${product.id}/unpublish`);
 
-      push("محصول از حالت انتشار خارج شد.", "success");
+      push("درخواست لغو انتشار ثبت شد؛ پس از تأیید سایت عمومی وضعیت نهایی نمایش داده می‌شود.", "success");
 
       await Promise.all([
         loadProducts(),
@@ -847,36 +845,32 @@ export default function Products() {
                         ویرایش
                       </Link>
 
-                      {product.visibility === "PUBLISHED" ? (
+                      {runningJob ? (
+                        <span className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-600">
+                          {runningJob.operation === "UNPUBLISH" ? "در حال لغو انتشار..." : runningJob.operation === "REBUILD" ? "در حال بازسازی سایت..." : "در حال انتشار..."}
+                        </span>
+                      ) : finishedJob?.status === "FAILED" && finishedJob.operation === "UNPUBLISH" && product.visibility === "HIDDEN" ? (
                         <button
                           type="button"
                           disabled={busy}
-                          onClick={() =>
-                            void handleUnpublish(product)
-                          }
-                          className="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => void handleUnpublish(product)}
+                          className="inline-flex items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {busy ? "در حال انجام..." : "لغو انتشار"}
+                          {busy ? "در حال تلاش..." : "تلاش دوباره حذف از سایت"}
                         </button>
-                      ) : (
+                      ) : product.visibility !== "PUBLISHED" || product.hasUnpublishedChanges ? (
                         <button
                           type="button"
-                          disabled={
-                            busy ||
-                            !canPublish ||
-                            Boolean(runningJob)
-                          }
-                          onClick={() =>
-                            void handlePublish(product)
-                          }
+                          disabled={busy || !canPublish}
+                          onClick={() => void handlePublish(product)}
                           className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {runningJob
-                            ? "در حال انتشار..."
-                            : busy
-                              ? "در حال انجام..."
-                              : "انتشار"}
+                          {busy ? "در حال انجام..." : product.visibility === "PUBLISHED" ? "انتشار نسخه جدید" : "انتشار"}
                         </button>
+                      ) : (
+                        <span className="inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-700">
+                          منتشر شده
+                        </span>
                       )}
 
                       <button

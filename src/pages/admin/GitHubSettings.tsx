@@ -19,14 +19,11 @@ export default function AdminGitHubSettings() {
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
-  const [form, setForm] = useState({ githubOwner: "", githubRepository: "", githubBranch: "" });
-  const [saving, setSaving] = useState(false);
 
   function load() {
     setLoading(true);
     api.get<GithubStatus>("/api/admin/github/status").then((s) => {
       setStatus(s);
-      setForm({ githubOwner: s.owner ?? "", githubRepository: s.repository ?? "", githubBranch: s.branch ?? "main" });
     }).finally(() => setLoading(false));
   }
   useEffect(load, []);
@@ -41,20 +38,6 @@ export default function AdminGitHubSettings() {
       setTestResult({ ok: false, message: err instanceof ApiError ? err.message : "خطای نامشخص" });
     } finally {
       setTesting(false);
-    }
-  }
-
-  async function saveConfig(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await api.put("/api/admin/github/config", form);
-      push("تنظیمات GitHub ذخیره شد.", "success");
-      load();
-    } catch (err) {
-      push(err instanceof ApiError ? err.message : "خطا در ذخیره تنظیمات.", "error");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -87,13 +70,16 @@ export default function AdminGitHubSettings() {
             </div>
 
             <div className="card">
-              <div className="section-head"><h2>پیکربندی مخزن</h2></div>
-              <form onSubmit={saveConfig}>
-                <div className="form-group"><label>مالک (Owner)</label><input value={form.githubOwner} onChange={(e) => setForm({ ...form, githubOwner: e.target.value })} /></div>
-                <div className="form-group"><label>نام مخزن</label><input value={form.githubRepository} onChange={(e) => setForm({ ...form, githubRepository: e.target.value })} /></div>
-                <div className="form-group"><label>شاخه</label><input value={form.githubBranch} onChange={(e) => setForm({ ...form, githubBranch: e.target.value })} /></div>
-                <button className="btn btn-primary btn-block" disabled={saving} type="submit">{saving ? "در حال ذخیره..." : "ذخیره"}</button>
-              </form>
+              <div className="section-head"><h2>پیکربندی انتشار</h2></div>
+              <div className="alert alert-success">مقصد انتشار فقط از متغیرهای محیطی امن Backend خوانده می‌شود و از داخل پنل قابل تغییر نیست؛ بنابراین تغییر تنظیمات ظاهری دیتابیس نمی‌تواند مسیر انتشار واقعی را از مقصد اصلی منحرف کند.</div>
+              <table style={{ marginTop: 12 }}>
+                <tbody>
+                  <tr><td>مالک (Owner)</td><td>{status?.owner ?? "—"}</td></tr>
+                  <tr><td>مخزن</td><td>{status?.repository ?? "—"}</td></tr>
+                  <tr><td>شاخه</td><td>{status?.branch ?? "—"}</td></tr>
+                </tbody>
+              </table>
+              <p className="form-help" style={{ marginTop: 10 }}>برای تغییر مقصد واقعی باید متغیرهای GITHUB_OWNER، GITHUB_REPOSITORY و GITHUB_BRANCH روی سرور Backend تغییر کنند و سرویس دوباره راه‌اندازی شود.</p>
             </div>
           </div>
         )}

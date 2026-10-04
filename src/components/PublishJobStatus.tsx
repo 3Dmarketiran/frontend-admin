@@ -48,7 +48,11 @@ export function PublishJobStatus({
                 "var(--muted, #64748b)",
             }}
           >
-            انتشار با موفقیت انجام شد.
+            {job.operation === "UNPUBLISH"
+              ? "لغو انتشار با موفقیت انجام شد."
+              : job.operation === "REBUILD"
+                ? "کاتالوگ عمومی با موفقیت بازسازی شد."
+                : "انتشار با موفقیت انجام شد."}
           </span>
         </div>
 
@@ -106,7 +110,11 @@ export function PublishJobStatus({
               color: "#b91c1c",
             }}
           >
-            انتشار ناموفق بود.
+            {job.operation === "UNPUBLISH"
+              ? "لغو انتشار ناموفق بود."
+              : job.operation === "REBUILD"
+                ? "بازسازی کاتالوگ ناموفق بود."
+                : "انتشار ناموفق بود."}
           </span>
         </div>
 
@@ -160,10 +168,17 @@ export function PublishJobStatus({
               "var(--muted, #64748b)",
           }}
         >
-          {job.status ===
-          "QUEUED"
-            ? "در صف انتشار قرار دارد."
-            : "در حال پردازش و ساخت نسخه عمومی است."}
+          {job.status === "QUEUED"
+            ? job.operation === "UNPUBLISH"
+              ? "در صف لغو انتشار قرار دارد."
+              : job.operation === "REBUILD"
+                ? "در صف بازسازی کاتالوگ قرار دارد."
+                : "در صف انتشار قرار دارد."
+            : job.operation === "UNPUBLISH"
+              ? "در حال ساخت نسخه عمومی بدون این محصول است."
+              : job.operation === "REBUILD"
+                ? "در حال بازسازی نسخه عمومی است."
+                : "در حال پردازش و ساخت نسخه عمومی است."}
         </span>
       </div>
     </div>

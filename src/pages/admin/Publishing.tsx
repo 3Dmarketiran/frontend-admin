@@ -40,13 +40,13 @@ export default function AdminPublishing() {
         ) : (
           <div className="card table-wrap">
             <table>
-              <thead><tr><th>محصول</th><th>فروشنده</th><th>وضعیت</th><th>Commit</th><th>زمان درخواست</th><th></th></tr></thead>
+              <thead><tr><th>محصول</th><th>فروشنده</th><th>وضعیت</th><th>عملیات</th><th>Commit</th><th>زمان درخواست</th><th></th></tr></thead>
               <tbody>
                 {jobs.map((j) => (
                   <tr key={j.id}>
                     <td>{j.product?.name ?? "—"}</td>
                     <td>{j.seller?.storeName ?? "—"}</td>
-                    <td><JobStatusBadge v={j.status} /></td>
+                    <td><JobStatusBadge v={j.status} /></td><td>{j.operation === "UNPUBLISH" ? "لغو انتشار" : j.operation === "REBUILD" ? "بازسازی" : "انتشار"}</td>
                     <td><code style={{ fontSize: ".75rem" }}>{j.commitSha?.slice(0, 8) ?? "—"}</code></td>
                     <td>{fmtDateTime(j.requestedAt)}</td>
                     <td><button className="btn btn-outline btn-sm" onClick={() => openDetail(j)}>جزئیات</button></td>

@@ -136,6 +136,8 @@ export interface Subscription {
   createdAt: string;
 }
 
+export type PublishJobOperation = "PUBLISH" | "UNPUBLISH" | "REBUILD";
+
 export interface PublishJob {
   id: string;
   sellerId: string;
@@ -148,6 +150,7 @@ export interface PublishJob {
     storeName: string;
   };
   status: JobStatus;
+  operation: PublishJobOperation;
   commitSha: string | null;
   errorMessage: string | null;
   requestedAt: string;
