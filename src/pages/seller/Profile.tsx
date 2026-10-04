@@ -27,6 +27,7 @@ export default function SellerProfile() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const resolvedLogo = seller?.slug ? `${API_URL}/api/sellers/by-slug/${encodeURIComponent(seller.slug)}/logo` : logoPreview;
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [themeColor, setThemeColor] = useState("#2e6fce");
@@ -177,7 +178,7 @@ export default function SellerProfile() {
         </div>
         <div className="seller-profile-hero card" style={{"--seller-theme": themeColor} as React.CSSProperties}>
           <div className="seller-profile-hero__avatar">
-            {logoPreview ? <img src={logoPreview} alt={seller.storeName} onError={(e) => { e.currentTarget.style.display="none"; }} /> : <Icon name="store" />}
+            {(resolvedLogo || logoPreview) ? <img src={resolvedLogo || logoPreview || ""} alt={seller.storeName} onError={(e) => { e.currentTarget.style.display="none"; }} /> : <Icon name="store" />}
           </div>
           <div className="seller-profile-hero__copy">
             <span className="seller-eyebrow">صفحه عمومی فروشگاه</span>
@@ -204,7 +205,7 @@ export default function SellerProfile() {
                 <div className="seller-card-heading"><div><span>اطلاعات اصلی</span><h3>پروفایل فروشگاه</h3></div><span className="seller-status">فعال</span></div>
                 <div className="seller-avatar-upload">
                   <div className="seller-avatar-upload__image">
-                    {logoPreview ? <img src={logoPreview} alt="پیش‌نمایش لوگو" /> : <Icon name="store" />}
+                    {(resolvedLogo || logoPreview) ? <img src={resolvedLogo || logoPreview || ""} alt="پیش‌نمایش لوگو" /> : <Icon name="store" />}
                   </div>
                   <div><strong>عکس پروفایل / لوگوی فروشگاه</strong><p>JPG، PNG یا WEBP — حداکثر ۵ مگابایت</p><input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { const f=e.target.files?.[0]; if(f) void uploadLogo(f); e.target.value=""; }} /><button type="button" className="btn btn-outline" onClick={() => logoInputRef.current?.click()}>انتخاب تصویر</button></div>
                 </div>

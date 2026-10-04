@@ -136,3 +136,10 @@
 .dropzone.is-full::after{content:"سقف آپلود این بخش تکمیل شده است";display:block;margin-top:8px;font-size:.63rem;font-weight:800;color:var(--neo-muted);}
 .guide-hero__facts span:first-child{color:var(--neo-blue-dark);background:#eef1fc;border-color:#dfe5fb;}
 @media(max-width:520px){.guide-hero__facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}.guide-hero__facts span{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.guide-hero .btn{width:100%;}}
+
+/* V77 publish feedback */
+.publish-progress{margin:16px 0;padding:14px;border:1px solid var(--color-border);border-radius:12px;background:var(--surface-secondary,#f8fafc);display:grid;gap:8px;color:var(--color-text,#172033)}
+.publish-progress small{opacity:.72;line-height:1.7}
+.publish-progress__track{height:7px;border-radius:99px;background:rgba(100,116,139,.18);overflow:hidden}
+.publish-progress__track span{display:block;width:42%;height:100%;border-radius:99px;background:var(--color-primary,#17365d);animation:publish-indeterminate 1.25s ease-in-out infinite alternate}
+@keyframes publish-indeterminate{from{transform:translateX(0)}to{transform:translateX(125%)}}

@@ -38,6 +38,17 @@ const MAX_PRODUCT_IMAGES = 5;
 const MAX_PRODUCT_3D_MODELS = 1;
 const MAX_PRODUCT_USDZ_MODELS = 1;
 
+function normalizeProductColors(value: unknown): Array<{ name: string; value: string }> {
+  let parsed = value;
+  if (typeof parsed === "string") {
+    try { parsed = JSON.parse(parsed); } catch { return []; }
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter((item): item is { name: string; value: string } =>
+    Boolean(item && typeof item === "object" && typeof item.name === "string" && typeof item.value === "string")
+  );
+}
+
 export default function ProductWizard() {
   const { id: routeId } = useParams();
   const navigate = useNavigate();
@@ -52,6 +63,7 @@ export default function ProductWizard() {
 
   const [loading, setLoading] = useState(Boolean(routeId));
   const [saving, setSaving] = useState(false);
+  const [publishStage, setPublishStage] = useState<"idle" | "submitting" | "queued">("idle");
   const [name, setName] = useState("");
   const [shortDescription, setShortDescription] = useState("");
   const [fullDescription, setFullDescription] = useState("");
@@ -101,7 +113,10 @@ export default function ProductWizard() {
   }, [routeId, push]);
 
   function hydrate(p: Product) {
-    setProduct(p);
+    // Normalize relation arrays defensively: older API deployments may omit
+    // optional relation fields in cached/legacy responses.
+    const normalizedProduct = { ...p, images: Array.isArray(p.images) ? p.images : [], models: Array.isArray(p.models) ? p.models : [] };
+    setProduct(normalizedProduct);
     setProductId(p.id);
 
     setName(p.name);
@@ -116,7 +131,7 @@ export default function ProductWizard() {
 
     setTags(p.tags ?? "");
     setMaterial(p.material ?? "");
-    setColors(Array.isArray(p.colors) ? p.colors : []);
+    setColors(normalizeProductColors(p.colors));
     setPrice(p.price == null ? "" : String(p.price));
 
     setUnit(
@@ -327,12 +342,14 @@ export default function ProductWizard() {
 
     try {
       if (publishNow) {
+        setPublishStage("submitting");
         await api.post(
           `/api/products/${productId}/publish`
         );
+        setPublishStage("queued");
 
         push(
-          "درخواست انتشار ثبت شد و محصول وارد صف انتشار شد.",
+          "درخواست انتشار ثبت شد. وضعیت نهایی را از فهرست محصولات پیگیری کنید.",
           "success"
         );
       } else {
@@ -354,6 +371,7 @@ export default function ProductWizard() {
       );
     } finally {
       setSaving(false);
+      setPublishStage("idle");
     }
   }
 
@@ -489,7 +507,7 @@ export default function ProductWizard() {
                   <label>رنگ محصول</label>
                   <div className="product-colors-list">
                     {colors.map((color, index) => (
-                      <div className="product-color-row" key={`${index}-${color.name}`}>
+                      <div className="product-color-row" key={index}>
                         <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(color.value) ? color.value : "#808080"} onChange={(e) => setColors((items) => items.map((item, i) => i === index ? { ...item, value: e.target.value } : item))} aria-label="انتخاب رنگ" />
                         <input value={color.name} onChange={(e) => setColors((items) => items.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} placeholder="نام رنگ" />
                         <button type="button" className="btn btn-outline btn-sm" onClick={() => setColors((items) => items.filter((_, i) => i !== index))}>حذف</button>
@@ -870,6 +888,13 @@ export default function ProductWizard() {
                 />
               )}
 
+              {saving && publishNow && (
+                <div className="publish-progress" role="status" aria-live="polite">
+                  <div className="publish-progress__track"><span /></div>
+                  <strong>{publishStage === "queued" ? "درخواست در صف انتشار ثبت شد" : "در حال ثبت درخواست انتشار…"}</strong>
+                  <small>پردازش انتشار در سرور انجام می‌شود؛ تا دریافت پاسخ، این صفحه را نبندید.</small>
+                </div>
+              )}
               <div
                 style={{
                   display: "flex",
