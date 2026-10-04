@@ -1,8 +1,8 @@
 import { API_URL } from "./config";
 
 const AUTH_STORAGE_KEY = "platform_session_id";
-const API_REQUEST_TIMEOUT_MS = 15_000;
-const API_UPLOAD_TIMEOUT_MS = 120_000;
+const API_REQUEST_TIMEOUT_MS = 30_000;
+const API_UPLOAD_TIMEOUT_MS = 180_000;
 
 export class ApiError extends Error {
   status: number;
@@ -121,7 +121,11 @@ async function request<T>(
 
   let res: Response | null = null;
   let lastError: unknown = null;
-  const maxAttempts = path === "/api/auth/login" ? 4 : 2;
+  const method = (init.method || "GET").toUpperCase();
+  // Safe automatic retries are limited to reads and login. Never replay a
+  // mutation after a network failure: the server may already have committed it.
+  const retryable = method === "GET" || path === "/api/auth/login";
+  const maxAttempts = path === "/api/auth/login" ? 4 : retryable ? 3 : 1;
 
   const timeoutMs = isFormDataBody(body) ? API_UPLOAD_TIMEOUT_MS : API_REQUEST_TIMEOUT_MS;
 
@@ -136,19 +140,24 @@ async function request<T>(
         headers,
         signal: controller.signal,
       });
-      if (![502, 503, 504].includes(res.status) || attempt === maxAttempts - 1) break;
+      if (![408, 425, 429, 500, 502, 503, 504].includes(res.status) || attempt === maxAttempts - 1 || !retryable) break;
     } catch (error) {
       lastError = error;
-      if (error instanceof DOMException && error.name === "AbortError") {
-        throw new ApiError(408, isFormDataBody(body)
-          ? "ارتباط با API برای آپلود بیشتر از حد مجاز طول کشید. اتصال و آدرس API را بررسی کنید و دوباره تلاش کنید."
-          : "پاسخی از API دریافت نشد. آدرس API یا وضعیت سرور را بررسی کنید و دوباره تلاش کنید.");
+      if (attempt === maxAttempts - 1 || !retryable) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          throw new ApiError(408, isFormDataBody(body)
+            ? "زمان پاسخ API برای آپلود تمام شد. پس از بررسی اتصال دوباره تلاش کنید."
+            : "پاسخ API در مهلت تعیین‌شده دریافت نشد. ممکن است سرویس در حال بیدارشدن یا بازیابی اتصال باشد.");
+        }
+        break;
       }
-      if (attempt === maxAttempts - 1) break;
     } finally {
       window.clearTimeout(timeoutId);
     }
-    await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+    if (attempt < maxAttempts - 1) {
+      const backoffMs = Math.min(900 * (2 ** attempt), 4_000) + Math.floor(Math.random() * 250);
+      await new Promise((resolve) => setTimeout(resolve, backoffMs));
+    }
   }
 
   if (!res) {
