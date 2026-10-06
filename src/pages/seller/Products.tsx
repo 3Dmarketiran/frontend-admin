@@ -800,9 +800,13 @@ export default function Products() {
                           {product.name}
                         </h3>
 
-                        <VisibilityBadge
-                          v={product.visibility}
-                        />
+                        {product.visibility === "PUBLISHED" && product.hasUnpublishedChanges ? (
+                          <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                            انتشار تأیید نشده
+                          </span>
+                        ) : (
+                          <VisibilityBadge v={product.visibility} />
+                        )}
                       </div>
 
                       {product.slug && (
@@ -865,7 +869,7 @@ export default function Products() {
                           onClick={() => void handlePublish(product)}
                           className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {busy ? "در حال انجام..." : product.visibility === "PUBLISHED" ? "انتشار نسخه جدید" : "انتشار"}
+                          {busy ? "در حال انجام..." : product.visibility === "PUBLISHED" && product.hasUnpublishedChanges ? "تلاش مجدد برای انتشار" : product.visibility === "PUBLISHED" ? "انتشار نسخه جدید" : "انتشار"}
                         </button>
                       ) : (
                         <span className="inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-700">
