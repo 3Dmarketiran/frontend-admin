@@ -27,7 +27,7 @@ export default function SellerProfile() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const resolvedLogo = seller?.slug ? `${API_URL}/api/sellers/by-slug/${encodeURIComponent(seller.slug)}/logo` : logoPreview;
+  const resolvedLogo = seller?.logoUrl || logoPreview;
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [themeColor, setThemeColor] = useState("#2e6fce");
