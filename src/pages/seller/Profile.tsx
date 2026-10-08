@@ -27,7 +27,11 @@ export default function SellerProfile() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoVersion, setLogoVersion] = useState(0);
   const resolvedLogo = seller?.logoUrl || logoPreview;
+  const dashboardLogoUrl = seller
+    ? `${API_URL}/api/sellers/${seller.id}/logo?v=${logoVersion}`
+    : null;
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [themeColor, setThemeColor] = useState("#2e6fce");
@@ -70,6 +74,7 @@ export default function SellerProfile() {
     const sellerData = sellerResponse.value.seller;
     setSeller(sellerData);
     setLogoPreview(sellerData.logoUrl || null);
+    setLogoVersion((value) => value + 1);
     setCategoryId(sellerData.category?.id || "");
     setThemeColor(sellerData.themeColor || "#2e6fce");
 
@@ -100,7 +105,7 @@ export default function SellerProfile() {
     try {
       const formData = new FormData(); formData.append("logo", file);
       const result = await api.upload<LogoUploadResponse>(`/api/sellers/${seller.id}/logo`, formData);
-      setSeller(result.seller); revokePreview(localPreview); setLogoPreview(result.seller.logoUrl || null);
+      setSeller(result.seller); revokePreview(localPreview); setLogoPreview(result.seller.logoUrl || null); setLogoVersion((value) => value + 1);
       push("لوگوی فروشگاه با موفقیت آپلود شد.", "success");
     } catch (err) {
       revokePreview(localPreview); setLogoPreview(seller.logoUrl || null);
@@ -178,7 +183,7 @@ export default function SellerProfile() {
         </div>
         <div className="seller-profile-hero card" style={{"--seller-theme": themeColor} as React.CSSProperties}>
           <div className="seller-profile-hero__avatar">
-            {(resolvedLogo || logoPreview) ? <img src={resolvedLogo || logoPreview || ""} alt={seller.storeName} onError={(e) => { e.currentTarget.style.display="none"; }} /> : <Icon name="store" />}
+            {(resolvedLogo || logoPreview || dashboardLogoUrl) ? <img src={resolvedLogo || logoPreview || dashboardLogoUrl || ""} alt={seller.storeName} onError={(e) => { if (resolvedLogo && e.currentTarget.src !== resolvedLogo) e.currentTarget.src = resolvedLogo; else e.currentTarget.style.display="none"; }} /> : <Icon name="store" />}
           </div>
           <div className="seller-profile-hero__copy">
             <span className="seller-eyebrow">صفحه عمومی فروشگاه</span>
@@ -205,7 +210,7 @@ export default function SellerProfile() {
                 <div className="seller-card-heading"><div><span>اطلاعات اصلی</span><h3>پروفایل فروشگاه</h3></div><span className="seller-status">فعال</span></div>
                 <div className="seller-avatar-upload">
                   <div className="seller-avatar-upload__image">
-                    {(resolvedLogo || logoPreview) ? <img src={resolvedLogo || logoPreview || ""} alt="پیش‌نمایش لوگو" /> : <Icon name="store" />}
+                    {(resolvedLogo || logoPreview || dashboardLogoUrl) ? <img src={resolvedLogo || logoPreview || dashboardLogoUrl || ""} alt="پیش‌نمایش لوگو" onError={(e) => { if (resolvedLogo && e.currentTarget.src !== resolvedLogo) e.currentTarget.src = resolvedLogo; else e.currentTarget.style.display="none"; }} /> : <Icon name="store" />}
                   </div>
                   <div><strong>عکس پروفایل / لوگوی فروشگاه</strong><p>JPG، PNG یا WEBP — حداکثر ۵ مگابایت</p><input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { const f=e.target.files?.[0]; if(f) void uploadLogo(f); e.target.value=""; }} /><button type="button" className="btn btn-outline" onClick={() => logoInputRef.current?.click()}>انتخاب تصویر</button></div>
                 </div>

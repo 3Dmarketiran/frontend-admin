@@ -63,7 +63,8 @@ export default function ProductWizard() {
 
   const [loading, setLoading] = useState(Boolean(routeId));
   const [saving, setSaving] = useState(false);
-  const [publishStage, setPublishStage] = useState<"idle" | "submitting" | "queued">("idle");
+  const [publishStage, setPublishStage] = useState<"idle" | "submitting" | "queued" | "processing" | "success" | "failed">("idle");
+  const [publishProgress, setPublishProgress] = useState(0);
   const [name, setName] = useState("");
   const [shortDescription, setShortDescription] = useState("");
   const [fullDescription, setFullDescription] = useState("");
@@ -339,19 +340,57 @@ export default function ProductWizard() {
     if (!productId) return;
 
     setSaving(true);
+    setPublishProgress(publishNow ? 8 : 0);
 
     try {
       if (publishNow) {
         setPublishStage("submitting");
-        await api.post(
+        const response = await api.post<{ job: { id: string; status: string } }>(
           `/api/products/${productId}/publish`
         );
-        setPublishStage("queued");
+        const jobId = response.job?.id;
+        if (!jobId) throw new Error("شناسه درخواست انتشار از سرور دریافت نشد.");
 
-        push(
-          "درخواست انتشار ثبت شد. وضعیت نهایی را از فهرست محصولات پیگیری کنید.",
-          "success"
-        );
+        setPublishStage("queued");
+        setPublishProgress(25);
+
+        const deadline = Date.now() + 90_000;
+        let lastStatus = "QUEUED";
+        while (Date.now() < deadline) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1200));
+          const statusResponse = await api.get<{ job: { status: string; errorMessage?: string | null } }>(
+            `/api/publishing/jobs/${jobId}`
+          );
+          const status = statusResponse.job?.status || lastStatus;
+          lastStatus = status;
+
+          if (status === "PROCESSING") {
+            setPublishStage("processing");
+            setPublishProgress((value) => Math.max(value, 60));
+            continue;
+          }
+
+          if (status === "SUCCESS") {
+            setPublishStage("success");
+            setPublishProgress(100);
+            push("انتشار محصول با موفقیت انجام شد.", "success");
+            await new Promise((resolve) => window.setTimeout(resolve, 350));
+            navigate("/seller/products");
+            return;
+          }
+
+          if (status === "FAILED") {
+            setPublishStage("failed");
+            setPublishProgress(100);
+            throw new Error(statusResponse.job?.errorMessage || "پردازش انتشار در سرور ناموفق بود.");
+          }
+        }
+
+        // The request itself succeeded. If the worker needs longer, leave the
+        // job in the queue rather than reporting a false failure.
+        setPublishStage("queued");
+        setPublishProgress(85);
+        push("درخواست انتشار ثبت شد و هنوز در صف پردازش است.", "success");
       } else {
         push(
           "محصول ذخیره شد. برای نمایش عمومی باید آن را منتشر کنید.",
@@ -359,19 +398,20 @@ export default function ProductWizard() {
         );
       }
 
-      navigate(
-        "/seller/products"
-      );
+      navigate("/seller/products");
     } catch (err) {
+      setPublishStage("failed");
       push(
         err instanceof ApiError
           ? err.message
-          : "خطا در نهایی‌سازی محصول.",
+          : err instanceof Error
+            ? err.message
+            : "خطا در نهایی‌سازی محصول.",
         "error"
       );
     } finally {
       setSaving(false);
-      setPublishStage("idle");
+      window.setTimeout(() => { setPublishStage("idle"); setPublishProgress(0); }, 500);
     }
   }
 
@@ -889,10 +929,10 @@ export default function ProductWizard() {
               )}
 
               {saving && publishNow && (
-                <div className="publish-progress" role="status" aria-live="polite">
-                  <div className="publish-progress__track"><span /></div>
-                  <strong>{publishStage === "queued" ? "درخواست در صف انتشار ثبت شد" : "در حال ثبت درخواست انتشار…"}</strong>
-                  <small>پردازش انتشار در سرور انجام می‌شود؛ تا دریافت پاسخ، این صفحه را نبندید.</small>
+                <div className={`publish-progress publish-progress--${publishStage}`} role="status" aria-live="polite">
+                  <div className="publish-progress__meta"><strong>{publishStage === "submitting" ? "در حال ثبت درخواست انتشار…" : publishStage === "queued" ? "درخواست در صف انتشار است" : publishStage === "processing" ? "در حال پردازش و به‌روزرسانی سایت…" : publishStage === "success" ? "انتشار با موفقیت انجام شد" : publishStage === "failed" ? "انتشار ناموفق بود" : "در حال بررسی وضعیت انتشار…"}</strong><span>{publishProgress}%</span></div>
+                  <div className="publish-progress__track"><span style={{ width: `${publishProgress}%` }} /></div>
+                  <small>این نوار بر اساس وضعیت واقعی Publish Job به‌روزرسانی می‌شود؛ نه یک انیمیشن نمایشی.</small>
                 </div>
               )}
               <div
@@ -1996,9 +2036,10 @@ function PreviewCard({
           loading="lazy"
           style={{
             width: "100%",
-            aspectRatio: "1/1",
+            aspectRatio: "auto",
+            maxHeight: 420,
             objectFit:
-              "cover",
+              "contain",
           }}
         />
       ) : (
