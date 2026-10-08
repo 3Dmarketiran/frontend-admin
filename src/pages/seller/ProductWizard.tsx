@@ -354,7 +354,8 @@ export default function ProductWizard() {
         setPublishStage("queued");
         setPublishProgress(25);
 
-        const deadline = Date.now() + 90_000;
+        const deadline = Date.now() + 5 * 60_000;
+        const startedAt = Date.now();
         let lastStatus = "QUEUED";
         while (Date.now() < deadline) {
           await new Promise((resolve) => window.setTimeout(resolve, 1200));
@@ -366,7 +367,9 @@ export default function ProductWizard() {
 
           if (status === "PROCESSING") {
             setPublishStage("processing");
-            setPublishProgress((value) => Math.max(value, 60));
+            const elapsed = Date.now() - startedAt;
+            const timeProgress = Math.min(94, 60 + Math.floor((elapsed / (5 * 60_000)) * 34));
+            setPublishProgress((value) => Math.max(value, timeProgress));
             continue;
           }
 
@@ -388,9 +391,9 @@ export default function ProductWizard() {
 
         // The request itself succeeded. If the worker needs longer, leave the
         // job in the queue rather than reporting a false failure.
-        setPublishStage("queued");
-        setPublishProgress(85);
-        push("درخواست انتشار ثبت شد و هنوز در صف پردازش است.", "success");
+        setPublishStage(lastStatus === "PROCESSING" ? "processing" : "queued");
+        setPublishProgress(lastStatus === "PROCESSING" ? 94 : 35);
+        push("درخواست انتشار ثبت شد و هنوز در حال پردازش است. وضعیت از صفحه محصولات قابل پیگیری است.", "success");
       } else {
         push(
           "محصول ذخیره شد. برای نمایش عمومی باید آن را منتشر کنید.",
