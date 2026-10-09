@@ -194,11 +194,12 @@ function ActivateSubscriptionModal({ seller, plans, categories, mode, onClose, o
     setSubmitting(true);
     setError(null);
     try {
-      await api.post("/api/subscriptions/activate", { sellerId: seller.id, planId, notes: notes || undefined });
-      push(`اشتراک برای «${seller.storeName}» فعال شد.`, "success");
+      const endpoint = mode === "renew" ? "/api/subscriptions/renew" : "/api/subscriptions/activate";
+      await api.post(endpoint, { sellerId: seller.id, planId, notes: notes || undefined });
+      push(mode === "renew" ? `اشتراک «${seller.storeName}» تمدید شد و زمان باقی‌مانده حفظ شد.` : `اشتراک برای «${seller.storeName}» فعال شد.`, "success");
       onDone();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "خطا در فعال‌سازی اشتراک.");
+      setError(err instanceof ApiError ? err.message : mode === "renew" ? "خطا در تمدید اشتراک." : "خطا در فعال‌سازی اشتراک.");
     } finally {
       setSubmitting(false);
     }
