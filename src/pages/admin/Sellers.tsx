@@ -15,6 +15,7 @@ export default function AdminSellers() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [activateFor, setActivateFor] = useState<Seller | null>(null);
+  const [renewFor, setRenewFor] = useState<Seller | null>(null);
   const [trafficOverview, setTrafficOverview] = useState<any[]>([]);
   const [pendingTraffic, setPendingTraffic] = useState<any[]>([]);
 
@@ -87,7 +88,19 @@ export default function AdminSellers() {
                       <td>{activeSub ? <span className="badge badge-success">فعال تا {fmtDate(activeSub.endDate)}</span> : <span className="badge badge-error">بدون اشتراک فعال</span>}</td>
                       <td>{s.isActive ? <span className="badge badge-success">فعال</span> : <span className="badge badge-muted">غیرفعال</span>}</td>
                       <td style={{ display: "flex", gap: 6 }}>
-                        <button className="btn btn-outline btn-sm" onClick={() => setActivateFor(s)}>فعال‌سازی اشتراک</button>
+                        {activeSub
+                          ? <button className="btn btn-primary btn-sm" onClick={() => setRenewFor(s)}>تمدید اشتراک</button>
+                          : <button className="btn btn-outline btn-sm" onClick={() => setActivateFor(s)}>فعال‌سازی اشتراک</button>}
+                        {activeSub && <button className="btn btn-danger btn-sm" onClick={async () => {
+                          if (!window.confirm(`اشتراک فروشگاه «${s.storeName}» منقضی شود؟ این عمل با غیرفعال‌کردن حساب متفاوت است.`)) return;
+                          try {
+                            await api.post(`/api/subscriptions/${activeSub.id}/expire`, {});
+                            push("اشتراک منقضی شد؛ وضعیت حساب فروشنده تغییر نکرد.", "success");
+                            load();
+                          } catch (err) {
+                            push(err instanceof ApiError ? err.message : "منقضی‌کردن اشتراک انجام نشد.", "error");
+                          }
+                        }}>منقضی کردن اشتراک</button>}
                         <button className="btn btn-outline btn-sm" onClick={() => toggleActive(s)}>{s.isActive ? "غیرفعال کن" : "فعال کن"}</button>
                         <button className="btn btn-danger btn-sm" onClick={() => deleteSeller(s)}>حذف دائمی</button>
                       </td>
@@ -109,7 +122,8 @@ export default function AdminSellers() {
       </div>
 
       {showCreate && <CreateSellerModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} />}
-      {activateFor && <ActivateSubscriptionModal seller={activateFor} plans={plans} categories={planCategories} onClose={() => setActivateFor(null)} onDone={() => { setActivateFor(null); load(); }} />}
+      {activateFor && <ActivateSubscriptionModal seller={activateFor} plans={plans} categories={planCategories} mode="activate" onClose={() => setActivateFor(null)} onDone={() => { setActivateFor(null); load(); }} />}
+      {renewFor && <ActivateSubscriptionModal seller={renewFor} plans={plans} categories={planCategories} mode="renew" onClose={() => setRenewFor(null)} onDone={() => { setRenewFor(null); load(); }} />}
     </>
   );
 }
@@ -167,7 +181,7 @@ function CreateSellerModal({ onClose, onCreated }: { onClose: () => void; onCrea
   );
 }
 
-function ActivateSubscriptionModal({ seller, plans, categories, onClose, onDone }: { seller: Seller; plans: SubscriptionPlan[]; categories: PlanCategory[]; onClose: () => void; onDone: () => void }) {
+function ActivateSubscriptionModal({ seller, plans, categories, mode, onClose, onDone }: { seller: Seller; plans: SubscriptionPlan[]; categories: PlanCategory[]; mode: "activate" | "renew"; onClose: () => void; onDone: () => void }) {
   const { push } = useToast();
   const [planId, setPlanId] = useState(plans[0]?.id ?? "");
   const [notes, setNotes] = useState("");
@@ -191,7 +205,7 @@ function ActivateSubscriptionModal({ seller, plans, categories, onClose, onDone 
   }
 
   return (
-    <Modal title={`فعال‌سازی اشتراک — ${seller.storeName}`} onClose={onClose}>
+    <Modal title={`${mode === "renew" ? "تمدید اشتراک" : "فعال‌سازی اشتراک"} — ${seller.storeName}`} onClose={onClose}>
       <form onSubmit={onSubmit}>
         {error && <div className="alert alert-error">{error}</div>}
         <p className="form-help" style={{ marginBottom: 12 }}>این پلتفرم پرداخت آنلاین ندارد؛ پس از دریافت مبلغ از طریق کانال جداگانه، اشتراک را اینجا فعال کنید.</p>
@@ -210,7 +224,7 @@ function ActivateSubscriptionModal({ seller, plans, categories, onClose, onDone 
           <label>یادداشت (اختیاری)</label>
           <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
-        <button className="btn btn-primary btn-block" disabled={submitting || !planId} type="submit">{submitting ? "در حال ثبت..." : "فعال‌سازی"}</button>
+        <button className="btn btn-primary btn-block" disabled={submitting || !planId} type="submit">{submitting ? "در حال ثبت..." : mode === "renew" ? "ثبت تمدید اشتراک" : "فعال‌سازی"}</button>
       </form>
     </Modal>
   );
