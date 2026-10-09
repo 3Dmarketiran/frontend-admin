@@ -33,6 +33,7 @@ interface Usage {
       durationDays: number;
       productLimit: number | null;
       storageLimitMb: number | null;
+      trafficLimitGb: number | null;
     };
   } | null;
 }
@@ -97,6 +98,7 @@ export default function SellerOverview() {
 
   const [usage, setUsage] =
     useState<Usage | null>(null);
+  const [traffic, setTraffic] = useState<{ traffic: { usedGb: number; remainingGb: number | null; usedPercent: number | null; includedGb: number; purchasedGb: number; warningLevel: string } } | null>(null);
 
   const [loading, setLoading] =
     useState(true);
@@ -151,6 +153,8 @@ export default function SellerOverview() {
       api.get<Usage>(
         `/api/subscriptions/seller/${sellerId}/usage`
       ),
+
+      api.get<{ traffic: { usedGb: number; remainingGb: number | null; usedPercent: number | null; includedGb: number; purchasedGb: number; warningLevel: string } }>("/api/traffic/me"),
     ])
       .then(
         ([
@@ -169,6 +173,7 @@ export default function SellerOverview() {
           setUsage(
             usageResponse
           );
+          setTraffic(trafficResponse);
         }
       )
       .catch((err) => {
@@ -280,6 +285,17 @@ export default function SellerOverview() {
           <Spinner />
         ) : (
           <>
+            {/* Traffic quota */}
+            {traffic && (
+              <div className="card" style={{ marginBottom: 16, padding: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+                  <div><div style={{ fontSize: ".85rem", color: "var(--color-text-muted)" }}>ترافیک ماهانه فروشگاه</div><strong style={{ fontSize: "1.35rem" }}>{traffic.traffic.remainingGb == null ? "نامحدود" : `${traffic.traffic.remainingGb.toFixed(2)} GB باقی‌مانده`}</strong><div style={{ fontSize: ".8rem", color: "var(--color-text-muted)" }}>مصرف {traffic.traffic.usedGb.toFixed(2)} GB</div></div>
+                  <strong style={{ fontSize: "1.4rem" }}>{traffic.traffic.usedPercent == null ? "—" : `${traffic.traffic.usedPercent.toFixed(1)}٪`}</strong>
+                </div>
+                <div style={{ marginTop: 12, height: 8, borderRadius: 999, background: "#eee", overflow: "hidden" }}><div style={{ width: `${Math.min(100, traffic.traffic.usedPercent ?? 0)}%`, height: "100%", background: (traffic.traffic.usedPercent ?? 0) >= 90 ? "#dc2626" : (traffic.traffic.usedPercent ?? 0) >= 80 ? "#f97316" : (traffic.traffic.usedPercent ?? 0) >= 70 ? "#f59e0b" : "#16a34a" }} /></div>
+              </div>
+            )}
+
             {/* Welcome / Hero */}
             <div
               className="card"

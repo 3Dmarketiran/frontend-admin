@@ -304,6 +304,9 @@ export default function Subscription() {
     usage?.storageLimitMb !== undefined &&
     usage.storageUsedMb >= usage.storageLimitMb;
 
+  const trafficPercent = traffic?.traffic.usedPercent ?? 0;
+  const trafficStatus = trafficPercent >= 100 ? "EXCEEDED" : trafficPercent >= 90 ? "CTA" : trafficPercent >= 80 ? "DANGER" : trafficPercent >= 70 ? "WARNING" : "NORMAL";
+
   if (!sellerId) {
     return (
       <div className="space-y-6">
@@ -567,6 +570,31 @@ export default function Subscription() {
         </section>
       )}
 
+      {/* Real storefront traffic quota */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="text-sm font-medium text-slate-500">ترافیک فروشگاه</div>
+            <div className="mt-1 text-2xl font-black text-slate-900">
+              {traffic?.traffic.remainingGb == null ? "—" : `${traffic.traffic.remainingGb.toFixed(2)} GB`} <span className="text-base font-semibold text-slate-400">باقی‌مانده</span>
+            </div>
+            <div className="mt-1 text-sm text-slate-500">مصرف {traffic?.traffic.usedGb.toFixed(2) ?? "0.00"} GB از {(traffic?.traffic.includedGb ?? 0) + (traffic?.traffic.purchasedGb ?? 0)} GB</div>
+          </div>
+          <div className="text-left">
+            <div className="text-3xl font-black text-slate-900">{traffic?.traffic.usedPercent == null ? "—" : `${trafficPercent.toFixed(1)}٪`}</div>
+            <div className="text-xs text-slate-500">مصرف‌شده</div>
+          </div>
+        </div>
+        <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
+          <div className={`h-full rounded-full transition-all ${trafficStatus === "EXCEEDED" || trafficStatus === "CTA" ? "bg-red-500" : trafficStatus === "DANGER" ? "bg-orange-500" : trafficStatus === "WARNING" ? "bg-amber-400" : "bg-emerald-500"}`} style={{ width: `${Math.min(100, trafficPercent)}%` }} />
+        </div>
+        <div className="mt-2 flex justify-between text-xs text-slate-400"><span>۰٪</span><span>۷۰٪ هشدار</span><span>۸۰٪ جدی</span><span>۹۰٪ خرید</span><span>۱۰۰٪ توقف</span></div>
+        {trafficStatus === "WARNING" && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">هشدار اولیه: ۷۰٪ از ترافیک این ماه مصرف شده است.</div>}
+        {trafficStatus === "DANGER" && <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm font-medium text-orange-800">هشدار جدی: بیش از ۸۰٪ ترافیک مصرف شده است. بهتر است قبل از پایان سهمیه، بسته اضافه تهیه کنید.</div>}
+        {trafficStatus === "CTA" && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><div className="font-bold">ترافیک فروشگاه در آستانه اتمام است.</div><p className="mt-1">بیش از ۹۰٪ سهمیه مصرف شده؛ برای جلوگیری از توقف نمایش فایل‌ها، ترافیک اضافه تهیه کنید.</p><button type="button" className="mt-3 rounded-lg bg-red-600 px-4 py-2 font-bold text-white" onClick={() => document.getElementById("traffic-bundles")?.scrollIntoView({ behavior: "smooth", block: "start" })}>راهنمای خرید ترافیک اضافه</button></div>}
+        {trafficStatus === "EXCEEDED" && <div className="mt-4 rounded-xl border border-red-300 bg-red-100 p-4 text-sm font-bold text-red-800">سهمیه ترافیک این ماه تمام شده است. نمایش و دانلود فایل‌های عمومی فروشگاه تا خرید و تأیید ترافیک اضافه متوقف شده است.</div>}
+      </section>
+
       {/* Available plans */}
       <section>
         <div className="mb-4">
@@ -807,7 +835,7 @@ export default function Subscription() {
       </section>
 
       {/* Additional traffic bundles */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section id="traffic-bundles" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-bold text-slate-900">بسته‌های ترافیک اضافه</h2><p className="mt-1 text-sm text-slate-500">بسته فعال موردنظر را انتخاب و درخواست خرید را برای بررسی مدیر ثبت کنید.</p></div><span className="text-xs text-slate-500">{trafficLoading ? "در حال دریافت…" : `${traffic?.bundles.length ?? 0} بسته فعال`}</span></div>
         {!trafficLoading && (traffic?.bundles.length ?? 0) === 0 ? <p className="text-sm text-slate-500">فعلاً بسته ترافیکی برای خرید ارائه نشده است.</p> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{(traffic?.bundles ?? []).map(bundle => <article key={bundle.id} className="rounded-xl border border-slate-200 p-4"><div className="font-bold text-slate-900">{bundle.name}</div><div className="mt-2 text-2xl font-black text-slate-900">{bundle.gigabytes} GB</div><div className="mt-1 text-sm text-slate-500">{formatPrice(bundle.priceToman)} تومان</div><button type="button" className="mt-4 w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={!activeSubscription || Boolean(traffic?.traffic.pendingPurchases)} onClick={async () => { try { await api.post("/api/traffic/purchases", { bundleId: bundle.id }); await loadTraffic(); } catch (e) { push(e instanceof ApiError ? e.message : "ثبت درخواست خرید ناموفق بود.", "error"); } }}>درخواست خرید بسته</button></article>)}</div>}
         {traffic?.purchases?.length ? <div className="mt-5 border-t border-slate-100 pt-4"><h3 className="mb-2 text-sm font-bold">درخواست‌های اخیر</h3><div className="space-y-2">{traffic.purchases.slice(0,5).map(p => <div key={p.id} className="flex justify-between gap-3 text-sm"><span>{p.bundle?.name || `${p.gigabytes} GB`}</span><span className="text-slate-500">{p.status === "PENDING" ? "در انتظار بررسی" : p.status === "APPROVED" ? "تأیید شده" : "رد شده"}</span></div>)}</div></div> : null}
