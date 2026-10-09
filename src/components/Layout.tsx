@@ -85,8 +85,7 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
       {menuOpen && <button className="mobile-menu-backdrop" aria-label="بستن منو" onClick={() => setMenuOpen(false)} />}
       <aside className={`sidebar${menuOpen ? " open" : ""}`}>
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true">3D</span>
-          <span>3DMarketiran</span>
+          <img className="brand-logo-image" src="/3dmarketiran-logo.svg" alt="3DMarketiran" />
         </div>
         <div className="sidebar-heading">{area === "admin" ? "مدیریت پلتفرم" : "مدیریت فروشگاه"}</div>
         <nav>
