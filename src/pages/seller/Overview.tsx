@@ -161,6 +161,7 @@ export default function SellerOverview() {
           productsResponse,
           overviewResponse,
           usageResponse,
+          trafficResponse,
         ]) => {
           setProducts(
             productsResponse.items
