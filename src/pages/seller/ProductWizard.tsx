@@ -1068,6 +1068,14 @@ function ImagesStep({
       null
     );
 
+  // Existing product media can be omitted by a stale/legacy product response.
+  // Re-fetch once on entry when the wizard has no hydrated image relation, so
+  // sellers see saved photos immediately instead of having to upload a new file.
+  useEffect(() => {
+    if (!productId || (product?.images?.length ?? 0) > 0) return;
+    void onRefetch();
+  }, [productId]);
+
   async function uploadFile(
     file: File
   ) {
