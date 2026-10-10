@@ -54,6 +54,7 @@ export default function AdminPlans() {
   const [trafficBundles, setTrafficBundles] = useState<TrafficBundle[]>([]);
   const [editingBundle, setEditingBundle] = useState<TrafficBundle | null>(null);
   const [showBundleCreate, setShowBundleCreate] = useState(false);
+  const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -74,6 +75,23 @@ export default function AdminPlans() {
   }
 
   useEffect(() => { void load(); }, []);
+
+  async function deletePlan(plan: SubscriptionPlan) {
+    const confirmed = window.confirm(
+      `پلن «${plan.name}» حذف شود؟\n\nسوابق اشتراک غیرفعال/قدیمی متصل به این پلن نیز از دیتابیس حذف می‌شوند. اگر اشتراک فعال داشته باشد، سرور اجازه حذف نمی‌دهد.`
+    );
+    if (!confirmed) return;
+    setDeletingPlanId(plan.id);
+    try {
+      await api.delete(`/api/subscriptions/plans/${plan.id}`);
+      push("پلن و سوابق غیرفعال وابسته حذف شدند.", "success");
+      await load();
+    } catch (err) {
+      push(err instanceof ApiError ? err.message : "حذف پلن انجام نشد.", "error");
+    } finally {
+      setDeletingPlanId(null);
+    }
+  }
 
   const grouped = useMemo(() => {
     const map = new Map<string, SubscriptionPlan[]>();
@@ -145,7 +163,7 @@ export default function AdminPlans() {
                   </div>
                   {items.length === 0 ? <div className="card form-help">برای این دسته هنوز پلنی اضافه نشده است.</div> : (
                     <div className="grid grid-3">
-                      {items.map((p) => <PlanCard key={p.id} plan={p} onEdit={() => setEditingPlan(p)} />)}
+                      {items.map((p) => <PlanCard key={p.id} plan={p} onEdit={() => setEditingPlan(p)} onDelete={() => void deletePlan(p)} deleting={deletingPlanId === p.id} />)}
                     </div>
                   )}
                 </section>
@@ -155,7 +173,7 @@ export default function AdminPlans() {
               <section>
                 <h3 style={{ margin: "0 0 10px" }}>بدون دسته‌بندی</h3>
                 <div className="grid grid-3">
-                  {(grouped.get("__uncategorized") || []).map((p) => <PlanCard key={p.id} plan={p} onEdit={() => setEditingPlan(p)} />)}
+                  {(grouped.get("__uncategorized") || []).map((p) => <PlanCard key={p.id} plan={p} onEdit={() => setEditingPlan(p)} onDelete={() => void deletePlan(p)} deleting={deletingPlanId === p.id} />)}
                 </div>
               </section>
             )}
@@ -179,7 +197,7 @@ export default function AdminPlans() {
   );
 }
 
-function PlanCard({ plan, onEdit }: { plan: SubscriptionPlan; onEdit: () => void }) {
+function PlanCard({ plan, onEdit, onDelete, deleting }: { plan: SubscriptionPlan; onEdit: () => void; onDelete: () => void; deleting: boolean }) {
   return <div className="card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
     <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
       <div><div style={{ fontWeight: 800, fontSize: "1.08rem" }}>{plan.name}</div><div className="form-help">{formatDuration(plan.durationDays)}</div></div>
@@ -192,7 +210,10 @@ function PlanCard({ plan, onEdit }: { plan: SubscriptionPlan; onEdit: () => void
       <PlanMeta label="ترافیک ماهانه" value={plan.trafficLimitGb ? `${plan.trafficLimitGb} GB` : "نامحدود"} />
     </div>
     {plan.discountPct ? <span className="badge badge-info" style={{ width: "fit-content" }}>{plan.discountPct.toLocaleString("fa-IR")}% تخفیف</span> : null}
-    <button className="btn btn-secondary btn-block" onClick={onEdit}>✎ ویرایش پلن</button>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: "auto" }}>
+      <button className="btn btn-secondary btn-block" onClick={onEdit}>✎ ویرایش پلن</button>
+      <button className="btn btn-danger btn-block" onClick={onDelete} disabled={deleting}>{deleting ? "در حال حذف…" : "حذف پلن"}</button>
+    </div>
   </div>;
 }
 

@@ -339,6 +339,16 @@ export default function ProductWizard() {
   async function finalize() {
     if (!productId) return;
 
+    // The publishing service rejects 3D/AR products without real dimensions.
+    // Catch this before queueing so the seller is taken directly to the dimensions step.
+    const hasModelForPublish = (product?.models ?? []).length > 0;
+    const requiredDimensions = [product?.widthMm, product?.heightMm, product?.depthMm];
+    if (publishNow && hasModelForPublish && requiredDimensions.some((value) => value == null || !Number.isFinite(Number(value)) || Number(value) <= 0)) {
+      push("برای انتشار محصول سه‌بعدی/AR، عرض، ارتفاع و عمق واقعی را در مرحله ابعاد وارد و ذخیره کنید.", "error");
+      setStep(4);
+      return;
+    }
+
     setSaving(true);
     setPublishProgress(publishNow ? 8 : 0);
 
