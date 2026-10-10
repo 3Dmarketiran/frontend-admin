@@ -181,9 +181,27 @@ function CreateSellerModal({ onClose, onCreated }: { onClose: () => void; onCrea
   );
 }
 
+function displayedPlanDurationDays(plan: Pick<SubscriptionPlan, "id" | "name" | "durationDays">): number {
+  const identity = `${plan.id} ${plan.name}`.normalize("NFKC");
+  const isQuarterly = /(?:[-_ ]90(?:[-_ ]|$)|۹۰|(?:3|۳|سه)[\s\u200c-]*(?:month|months|ماه)|quarter(?:ly)?|فصلی)/i.test(identity);
+  return plan.durationDays === 30 && isQuarterly ? 90 : plan.durationDays;
+}
+
 function ActivateSubscriptionModal({ seller, plans, categories, mode, onClose, onDone }: { seller: Seller; plans: SubscriptionPlan[]; categories: PlanCategory[]; mode: "activate" | "renew"; onClose: () => void; onDone: () => void }) {
   const { push } = useToast();
-  const [planId, setPlanId] = useState(plans[0]?.id ?? "");
+  const currentSubscription = seller.subscriptions?.find((subscription) =>
+    subscription.status === "ACTIVE" && (!subscription.endDate || new Date(subscription.endDate).getTime() >= Date.now()),
+  ) ?? seller.subscriptions?.[0];
+  const preferredPlanId = mode === "renew" && currentSubscription && plans.some((plan) => plan.id === currentSubscription.planId)
+    ? currentSubscription.planId
+    : (plans[0]?.id ?? "");
+  const [planId, setPlanId] = useState(preferredPlanId);
+  const selectedPlan = plans.find((plan) => plan.id === planId);
+  const currentEndTime = currentSubscription?.endDate ? new Date(currentSubscription.endDate).getTime() : 0;
+  const renewalStart = mode === "renew" && currentEndTime > Date.now() ? currentEndTime : Date.now();
+  const selectedDuration = selectedPlan ? displayedPlanDurationDays(selectedPlan) : 0;
+  const projectedEnd = selectedDuration > 0 ? new Date(renewalStart + selectedDuration * 24 * 60 * 60 * 1000) : null;
+  const formatDateFa = (value: Date) => value.toLocaleDateString("fa-IR", { year: "numeric", month: "long", day: "numeric" });
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -217,9 +235,10 @@ function ActivateSubscriptionModal({ seller, plans, categories, mode, onClose, o
             {categories.length > 0 ? categories.map((category) => {
               const categoryPlans = plans.filter((p) => p.categoryId === category.id);
               if (!categoryPlans.length) return null;
-              return <optgroup key={category.id} label={category.name}>{categoryPlans.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.durationDays} روز — {p.price.toLocaleString("fa-IR")}</option>)}</optgroup>;
-            }) : plans.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.durationDays} روز — {p.price.toLocaleString("fa-IR")}</option>)}
+              return <optgroup key={category.id} label={category.name}>{categoryPlans.map((p) => <option key={p.id} value={p.id}>{p.name} — {displayedPlanDurationDays(p)} روز — {p.price.toLocaleString("fa-IR")}</option>)}</optgroup>;
+            }) : plans.map((p) => <option key={p.id} value={p.id}>{p.name} — {displayedPlanDurationDays(p)} روز — {p.price.toLocaleString("fa-IR")}</option>)}
           </select>
+          {mode === "renew" && projectedEnd && <div className="form-help" style={{ marginTop: 8, lineHeight: 1.9 }}>مدت تمدید: <strong>{selectedDuration} روز</strong>. تاریخ پایان جدید بر اساس افزودن مدت پلن به پایان اشتراک فعلی: <strong>{formatDateFa(projectedEnd)}</strong>.</div>}
         </div>
         <div className="form-group">
           <label>یادداشت (اختیاری)</label>

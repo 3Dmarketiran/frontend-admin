@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { api, ApiError, API_URL } from "../../lib/api";
+import { api, ApiError, API_URL, getStoredSessionId } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { PageHeader } from "../../components/Layout";
 import { Spinner } from "../../components/ui";
@@ -27,11 +27,12 @@ export default function SellerProfile() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [authorizedLogoUrl, setAuthorizedLogoUrl] = useState<string | null>(null);
+  const [logoLoadFailed, setLogoLoadFailed] = useState(false);
   const [logoVersion, setLogoVersion] = useState(0);
-  const resolvedLogo = seller?.logoUrl || logoPreview;
-  const dashboardLogoUrl = seller
-    ? `${API_URL}/api/sellers/${seller.id}/logo?v=${logoVersion}`
-    : null;
+  // Prefer the authenticated blob URL. The dashboard logo endpoint requires a
+  // bearer session, which a plain <img src="..."> request cannot attach.
+  const resolvedLogo = logoPreview || authorizedLogoUrl || seller?.logoUrl || null;
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [themeColor, setThemeColor] = useState("#2e6fce");
@@ -73,7 +74,8 @@ export default function SellerProfile() {
 
     const sellerData = sellerResponse.value.seller;
     setSeller(sellerData);
-    setLogoPreview(sellerData.logoUrl || null);
+    setLogoPreview(null);
+    setLogoLoadFailed(false);
     setLogoVersion((value) => value + 1);
     setCategoryId(sellerData.category?.id || "");
     setThemeColor(sellerData.themeColor || "#2e6fce");
@@ -92,6 +94,50 @@ export default function SellerProfile() {
     void loadProfile();
   }, [user]);
 
+  useEffect(() => {
+    const sellerId = seller?.id;
+    if (!sellerId) {
+      setAuthorizedLogoUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    const sessionId = getStoredSessionId();
+    const headers = new Headers();
+    if (sessionId) headers.set("Authorization", `Bearer ${sessionId}`);
+
+    setAuthorizedLogoUrl(null);
+    setLogoLoadFailed(false);
+    fetch(`${API_URL}/api/sellers/${encodeURIComponent(sellerId)}/logo?v=${logoVersion}`, {
+      method: "GET",
+      headers,
+      credentials: "include",
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Logo request failed (${response.status})`);
+        return response.blob();
+      })
+      .then((blob) => {
+        if (!blob.type.startsWith("image/")) throw new Error("Logo response is not an image");
+        objectUrl = URL.createObjectURL(blob);
+        if (cancelled) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        setAuthorizedLogoUrl(objectUrl);
+        setLogoLoadFailed(false);
+      })
+      .catch(() => {
+        if (!cancelled) setAuthorizedLogoUrl(null);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [seller?.id, logoVersion]);
+
   function revokePreview(url: string | null) {
     if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
   }
@@ -105,10 +151,10 @@ export default function SellerProfile() {
     try {
       const formData = new FormData(); formData.append("logo", file);
       const result = await api.upload<LogoUploadResponse>(`/api/sellers/${seller.id}/logo`, formData);
-      setSeller(result.seller); revokePreview(localPreview); setLogoPreview(result.seller.logoUrl || null); setLogoVersion((value) => value + 1);
+      setSeller(result.seller); revokePreview(localPreview); setLogoPreview(null); setLogoLoadFailed(false); setLogoVersion((value) => value + 1);
       push("لوگوی فروشگاه با موفقیت آپلود شد.", "success");
     } catch (err) {
-      revokePreview(localPreview); setLogoPreview(seller.logoUrl || null);
+      revokePreview(localPreview); setLogoPreview(null);
       push(err instanceof ApiError ? err.message : "خطا در آپلود لوگو.", "error");
     } finally { setUploadingLogo(false); }
   }
@@ -129,7 +175,9 @@ export default function SellerProfile() {
       setSeller(result.seller);
       setCategoryId(result.seller.category?.id || categoryId);
       window.dispatchEvent(new CustomEvent("seller-theme-changed", { detail: { color: result.seller.themeColor || themeColor } }));
-      setLogoPreview(result.seller.logoUrl || null);
+      setLogoPreview(null);
+      setLogoLoadFailed(false);
+      setLogoVersion((value) => value + 1);
       push("پروفایل فروشگاه ذخیره شد.", "success");
     } catch (err) {
       push(err instanceof ApiError ? err.message : "خطا در ذخیره پروفایل.", "error");
@@ -183,7 +231,7 @@ export default function SellerProfile() {
         </div>
         <div className="seller-profile-hero card" style={{"--seller-theme": themeColor} as React.CSSProperties}>
           <div className="seller-profile-hero__avatar">
-            {(resolvedLogo || logoPreview || dashboardLogoUrl) ? <img src={resolvedLogo || logoPreview || dashboardLogoUrl || ""} alt={seller.storeName} onError={(e) => { if (resolvedLogo && e.currentTarget.src !== resolvedLogo) e.currentTarget.src = resolvedLogo; else e.currentTarget.style.display="none"; }} /> : <Icon name="store" />}
+            {resolvedLogo && !logoLoadFailed ? <img src={resolvedLogo} alt={seller.storeName} onLoad={() => setLogoLoadFailed(false)} onError={() => setLogoLoadFailed(true)} /> : <Icon name="store" />}
           </div>
           <div className="seller-profile-hero__copy">
             <span className="seller-eyebrow">صفحه عمومی فروشگاه</span>
@@ -210,7 +258,7 @@ export default function SellerProfile() {
                 <div className="seller-card-heading"><div><span>اطلاعات اصلی</span><h3>پروفایل فروشگاه</h3></div><span className="seller-status">فعال</span></div>
                 <div className="seller-avatar-upload">
                   <div className="seller-avatar-upload__image">
-                    {(resolvedLogo || logoPreview || dashboardLogoUrl) ? <img src={resolvedLogo || logoPreview || dashboardLogoUrl || ""} alt="پیش‌نمایش لوگو" onError={(e) => { if (resolvedLogo && e.currentTarget.src !== resolvedLogo) e.currentTarget.src = resolvedLogo; else e.currentTarget.style.display="none"; }} /> : <Icon name="store" />}
+                    {resolvedLogo && !logoLoadFailed ? <img src={resolvedLogo} alt="پیش‌نمایش لوگو" onLoad={() => setLogoLoadFailed(false)} onError={() => setLogoLoadFailed(true)} /> : <Icon name="store" />}
                   </div>
                   <div><strong>عکس پروفایل / لوگوی فروشگاه</strong><p>JPG، PNG یا WEBP — حداکثر ۵ مگابایت</p><input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { const f=e.target.files?.[0]; if(f) void uploadLogo(f); e.target.value=""; }} /><button type="button" className="btn btn-outline" onClick={() => logoInputRef.current?.click()}>انتخاب تصویر</button></div>
                 </div>
