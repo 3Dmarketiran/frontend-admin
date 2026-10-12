@@ -146,7 +146,7 @@ export default function AdminTrafficBundles() {
           <button className="btn btn-primary" onClick={openCreate}>+ بسته جدید</button>
         </div>
 
-        {loading ? <div className="card">در حال دریافت اطلاعات…</div> : (
+        {loading ? <div className="ui-skeleton-grid" role="status" aria-label="در حال بارگذاری بسته‌های ترافیک"><div className="ui-skeleton-card"><span className="ui-skeleton ui-skeleton-line short" /><span className="ui-skeleton ui-skeleton-line long" /><span className="ui-skeleton ui-skeleton-block" /></div><div className="ui-skeleton-card"><span className="ui-skeleton ui-skeleton-line medium" /><span className="ui-skeleton ui-skeleton-line long" /><span className="ui-skeleton ui-skeleton-block" /></div><div className="ui-skeleton-card"><span className="ui-skeleton ui-skeleton-line short" /><span className="ui-skeleton ui-skeleton-line medium" /><span className="ui-skeleton ui-skeleton-block" /></div></div> : (
           <div className="grid grid-3">
             {bundles.map((bundle) => (
               <article key={bundle.id} className="card">

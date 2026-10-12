@@ -188,7 +188,7 @@ export default function SellerProfile() {
     <>
       <PageHeader title="پروفایل فروشگاه" />
       <div className="content">
-        <div className="profile-loading-card card"><Spinner /><strong>در حال دریافت اطلاعات فروشگاه…</strong><span>ارتباط با API حداکثر چند ثانیه بررسی می‌شود.</span></div>
+        <div className="profile-loading-card card" role="status" aria-label="در حال بارگذاری پروفایل فروشگاه"><Spinner /></div>
       </div>
     </>
   );

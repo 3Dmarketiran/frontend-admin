@@ -141,7 +141,7 @@ export default function Layout({ area }: { area: "admin" | "seller" }) {
             <span className="badge badge-info">{roleLabel(user.role)}</span>
           </div>
         </header>
-        <Outlet />
+        <div className="route-transition" key={location.pathname}><Outlet /></div>
       </div>
     </div>
   );
@@ -176,7 +176,15 @@ function roleLabel(role: string) {
 }
 
 export function FullPageSpinner() {
-  return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-muted)" }}>در حال بارگذاری...</div>;
+  return (
+    <div className="ui-auth-skeleton" role="status" aria-label="در حال آماده‌سازی پنل" aria-live="polite" style={{ minHeight: "100vh", margin: "0 auto", alignContent: "center" }}>
+      <span className="ui-skeleton" style={{ width: 68, height: 68, borderRadius: 22, margin: "0 auto 8px" }} />
+      <span className="ui-skeleton ui-skeleton-line long" />
+      <span className="ui-skeleton ui-skeleton-line medium" />
+      <span className="ui-skeleton" style={{ height: 48, borderRadius: 14 }} />
+      <span className="ui-skeleton" style={{ height: 48, borderRadius: 14 }} />
+    </div>
+  );
 }
 
 export function PageHeader({ title, description }: { title: string; description?: string }) {

@@ -196,6 +196,16 @@ function ActivateSubscriptionModal({ seller, plans, categories, mode, onClose, o
     ? currentSubscription.planId
     : (plans[0]?.id ?? "");
   const [planId, setPlanId] = useState(preferredPlanId);
+  // The modal can be reused by React when the selected seller/mode changes.
+  // Keep the selected ID synchronized with the current seller and loaded plans,
+  // rather than retaining a stale plan ID from a previous activation.
+  useEffect(() => {
+    if (preferredPlanId && plans.some((plan) => plan.id === preferredPlanId)) {
+      setPlanId(preferredPlanId);
+    } else if (plans.length > 0 && !plans.some((plan) => plan.id === planId)) {
+      setPlanId(plans[0].id);
+    }
+  }, [seller.id, mode, preferredPlanId, plans]);
   const selectedPlan = plans.find((plan) => plan.id === planId);
   const currentEndTime = currentSubscription?.endDate ? new Date(currentSubscription.endDate).getTime() : 0;
   const renewalStart = mode === "renew" && currentEndTime > Date.now() ? currentEndTime : Date.now();
@@ -208,13 +218,26 @@ function ActivateSubscriptionModal({ seller, plans, categories, mode, onClose, o
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!planId) { setError("ابتدا یک پلن ایجاد کنید."); return; }
+    if (!planId || !selectedPlan || selectedPlan.id !== planId) {
+      setError("پلن انتخاب‌شده معتبر نیست. فهرست پلن‌ها را دوباره بارگذاری و انتخاب کنید.");
+      return;
+    }
+    // Snapshot the exact selected record before making the request. Never infer
+    // the plan from its label, category, or list position.
+    const requestedPlan = { id: selectedPlan.id, name: selectedPlan.name, durationDays: displayedPlanDurationDays(selectedPlan) };
     setSubmitting(true);
     setError(null);
     try {
       const endpoint = mode === "renew" ? "/api/subscriptions/renew" : "/api/subscriptions/activate";
-      await api.post(endpoint, { sellerId: seller.id, planId, notes: notes || undefined });
-      push(mode === "renew" ? `اشتراک «${seller.storeName}» تمدید شد و زمان باقی‌مانده حفظ شد.` : `اشتراک برای «${seller.storeName}» فعال شد.`, "success");
+      const result = await api.post<{ subscription?: { planId?: string; plan?: { id?: string; name?: string; durationDays?: number } } }>(endpoint, { sellerId: seller.id, planId: requestedPlan.id, notes: notes || undefined });
+      const saved = result?.subscription;
+      const savedPlanId = saved?.planId ?? saved?.plan?.id;
+      if (savedPlanId && savedPlanId !== requestedPlan.id) {
+        throw new Error(`عدم تطابق پلن: انتخاب «${requestedPlan.name}» بود اما سرور «${saved?.plan?.name ?? savedPlanId}» را برگرداند. عملیات را بررسی کنید.`);
+      }
+      const savedName = saved?.plan?.name ?? requestedPlan.name;
+      const savedDuration = saved?.plan?.durationDays ?? requestedPlan.durationDays;
+      push(mode === "renew" ? `اشتراک «${seller.storeName}» با پلن «${savedName}» (${savedDuration} روز) تمدید شد.` : `پلن «${savedName}» (${savedDuration} روز) برای «${seller.storeName}» فعال شد.`, "success");
       onDone();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : mode === "renew" ? "خطا در تمدید اشتراک." : "خطا در فعال‌سازی اشتراک.");
@@ -232,13 +255,17 @@ function ActivateSubscriptionModal({ seller, plans, categories, mode, onClose, o
           <label>پلن اشتراک</label>
           <select value={planId} onChange={(e) => setPlanId(e.target.value)}>
             {plans.length === 0 && <option value="">هیچ پلنی موجود نیست</option>}
-            {categories.length > 0 ? categories.map((category) => {
-              const categoryPlans = plans.filter((p) => p.categoryId === category.id);
-              if (!categoryPlans.length) return null;
-              return <optgroup key={category.id} label={category.name}>{categoryPlans.map((p) => <option key={p.id} value={p.id}>{p.name} — {displayedPlanDurationDays(p)} روز — {p.price.toLocaleString("fa-IR")}</option>)}</optgroup>;
-            }) : plans.map((p) => <option key={p.id} value={p.id}>{p.name} — {displayedPlanDurationDays(p)} روز — {p.price.toLocaleString("fa-IR")}</option>)}
+            {categories.length > 0 ? <>
+              {categories.map((category) => {
+                const categoryPlans = plans.filter((p) => p.categoryId === category.id);
+                if (!categoryPlans.length) return null;
+                return <optgroup key={category.id} label={category.name}>{categoryPlans.map((p) => <option key={p.id} value={p.id}>{p.name} — {displayedPlanDurationDays(p)} روز — {p.price.toLocaleString("fa-IR")}</option>)}</optgroup>;
+              })}
+              {plans.some((p) => !p.categoryId || !categories.some((c) => c.id === p.categoryId)) && <optgroup label="سایر پلن‌ها">{plans.filter((p) => !p.categoryId || !categories.some((c) => c.id === p.categoryId)).map((p) => <option key={p.id} value={p.id}>{p.name} — {displayedPlanDurationDays(p)} روز — {p.price.toLocaleString("fa-IR")}</option>)}</optgroup>}
+            </> : plans.map((p) => <option key={p.id} value={p.id}>{p.name} — {displayedPlanDurationDays(p)} روز — {p.price.toLocaleString("fa-IR")}</option>)}
           </select>
-          {mode === "renew" && projectedEnd && <div className="form-help" style={{ marginTop: 8, lineHeight: 1.9 }}>مدت تمدید: <strong>{selectedDuration} روز</strong>. تاریخ پایان جدید بر اساس افزودن مدت پلن به پایان اشتراک فعلی: <strong>{formatDateFa(projectedEnd)}</strong>.</div>}
+          {selectedPlan && <div className="form-help" style={{ marginTop: 8, lineHeight: 1.9 }}>پلن انتخاب‌شده: <strong>{selectedPlan.name}</strong> · شناسه: <code>{selectedPlan.id}</code> · مدت ثبت‌شده: <strong>{selectedDuration} روز</strong>.</div>}
+          {mode === "renew" && projectedEnd && <div className="form-help" style={{ marginTop: 8, lineHeight: 1.9 }}>تاریخ پایان جدید بر اساس افزودن مدت پلن به پایان اشتراک فعلی: <strong>{formatDateFa(projectedEnd)}</strong>.</div>}
         </div>
         <div className="form-group">
           <label>یادداشت (اختیاری)</label>

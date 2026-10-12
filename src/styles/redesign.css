@@ -1,2 +1,90 @@
 /* 3DMarketIran — pure neumorphic redesign. Design-only layer. */
 :root{--design-version:"PREMIUM-2026"}
+
+
+
+/* V118 — premium iOS-inspired fluid motion system (Admin + Seller portal) */
+:root {
+  --motion-ease: cubic-bezier(.22, 1, .36, 1);
+  --motion-ease-soft: cubic-bezier(.2, .75, .25, 1);
+  --motion-fast: 150ms;
+  --motion-base: 260ms;
+  --motion-slow: 460ms;
+}
+body { -webkit-tap-highlight-color: transparent; }
+.route-transition { min-width: 0; animation: admin-page-enter 420ms var(--motion-ease) both; transform-origin: 50% 0; }
+@keyframes admin-page-enter {
+  from { opacity: 0; transform: translate3d(0, 10px, 0) scale(.997); filter: blur(1.5px); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
+}
+button, .btn, a, input, select, textarea, [role="button"], [role="switch"], .nav-item, .sidebar-link {
+  transition:
+    color var(--motion-base) var(--motion-ease),
+    background-color var(--motion-base) var(--motion-ease),
+    border-color var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease),
+    opacity var(--motion-base) var(--motion-ease),
+    filter var(--motion-base) var(--motion-ease);
+}
+button:active, .btn:active, [role="button"]:active { transform: scale(.975); }
+button:disabled, .btn:disabled { cursor: wait; filter: saturate(.7); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, [role="button"]:focus-visible, [role="switch"]:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-primary, #3454d1) 32%, transparent);
+  outline-offset: 3px;
+}
+.card, .panel, .stat-card, .metric-card, article.card, .dashboard-card {
+  transition: box-shadow 320ms var(--motion-ease), border-color 320ms var(--motion-ease), transform 320ms var(--motion-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .card:hover, .panel:hover, .stat-card:hover, .metric-card:hover, .dashboard-card:hover {
+    border-color: color-mix(in srgb, var(--color-primary, #3454d1) 16%, var(--neo-border, #e7e9ef));
+  }
+}
+.app-shell, .app-main, .main-content, .content { animation: admin-shell-settle 420ms var(--motion-ease) both; }
+@keyframes admin-shell-settle { from { opacity: .92; } to { opacity: 1; } }
+.sidebar a, .sidebar button, .topbar a, .topbar button, .nav-link, .sidebar-nav a {
+  transition: background-color 260ms var(--motion-ease), color 260ms var(--motion-ease), transform 260ms var(--motion-ease);
+}
+input, select, textarea { transition: border-color 220ms var(--motion-ease), box-shadow 220ms var(--motion-ease), background-color 220ms var(--motion-ease); }
+input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary, #3454d1) 12%, transparent); }
+
+/* Loading skeletons replace text-only waiting states with visible layout placeholders. */
+.ui-skeleton {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #e9edf3;
+  isolation: isolate;
+}
+.ui-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(100deg, transparent 18%, rgba(255,255,255,.76) 48%, transparent 78%);
+  animation: ui-skeleton-shimmer 1.3s ease-in-out infinite;
+}
+@keyframes ui-skeleton-shimmer { to { transform: translateX(100%); } }
+.ui-skeleton-line { height: 12px; margin: 10px 0; }
+.ui-skeleton-line.short { width: 34%; }
+.ui-skeleton-line.medium { width: 58%; }
+.ui-skeleton-line.long { width: 82%; }
+.ui-skeleton-block { height: 92px; }
+.ui-skeleton-circle { width: 42px; height: 42px; border-radius: 50%; flex: 0 0 auto; }
+.ui-skeleton-card { padding: 18px; border: 1px solid var(--neo-border, #e7e9ef); border-radius: 18px; background: var(--neo-surface, #fff); }
+.ui-skeleton-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.ui-auth-skeleton { width: min(420px, 88vw); display: grid; gap: 18px; }
+.ui-auth-skeleton .ui-skeleton-line { margin: 0; }
+@media (max-width: 760px) { .ui-skeleton-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

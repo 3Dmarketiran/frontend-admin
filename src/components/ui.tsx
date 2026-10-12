@@ -209,9 +209,22 @@ export function EmptyState({
 
 export function Spinner() {
   return (
-    <div className="loading-panel">
-      <div className="loading-spinner" />
-      <span>در حال دریافت اطلاعات...</span>
+    <div className="ui-skeleton-grid" role="status" aria-label="در حال بارگذاری اطلاعات" aria-live="polite">
+      <div className="ui-skeleton-card">
+        <span className="ui-skeleton ui-skeleton-line short" />
+        <span className="ui-skeleton ui-skeleton-line long" />
+        <span className="ui-skeleton ui-skeleton-line medium" />
+      </div>
+      <div className="ui-skeleton-card">
+        <span className="ui-skeleton ui-skeleton-line medium" />
+        <span className="ui-skeleton ui-skeleton-line long" />
+        <span className="ui-skeleton ui-skeleton-line short" />
+      </div>
+      <div className="ui-skeleton-card">
+        <span className="ui-skeleton ui-skeleton-line short" />
+        <span className="ui-skeleton ui-skeleton-line medium" />
+        <span className="ui-skeleton ui-skeleton-line long" />
+      </div>
     </div>
   );
 }
